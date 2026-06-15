@@ -7,9 +7,10 @@ from pathlib import Path
 from typing import Optional
 
 from .manifest import load_manifest
-from .ledger import load_ledger
+from .ledger import load_ledger, LedgerEntry, save_ledger
 from .fingerprint import fingerprint
 from .freshness import is_fresh, waiver_active
+from .runner import run_capability
 
 MANIFEST_NAME = "capabilities.yaml"
 LEDGER_REL = Path(".ctk") / "ledger.json"
@@ -45,10 +46,39 @@ def cmd_status(root: Path, now: datetime) -> int:
     return 0
 
 
+def cmd_verify(root: Path, now: datetime, only: Optional[str]) -> int:
+    caps = load_manifest(root / MANIFEST_NAME)
+    if only is not None:
+        caps = [c for c in caps if c.id == only]
+        if not caps:
+            print(f"error: no capability with id {only!r}", file=sys.stderr)
+            return 2
+
+    ledger = load_ledger(root / LEDGER_REL)
+    worst_ok = True
+    for cap in caps:
+        result = run_capability(cap, root)
+        ledger[cap.id] = LedgerEntry(
+            result=result,
+            at=now.isoformat(),
+            tier=cap.tier,
+            fingerprint=fingerprint(cap, root) if cap.freshness == "code" else None,
+            waiver=None,
+        )
+        print(f"{cap.id}: {result}")
+        if result != "pass":
+            worst_ok = False
+    save_ledger(root / LEDGER_REL, ledger)
+    return 0 if worst_ok else 1
+
+
 def main(argv=None, cwd: Optional[str] = None) -> int:
     parser = argparse.ArgumentParser(prog="caps")
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("status", help="show capability status (read-only)")
+    v = sub.add_parser("verify", help="run checks and record proof")
+    v.add_argument("--capability", dest="only", default=None,
+                   help="verify a single capability by id")
 
     args = parser.parse_args(argv)
     start = Path(cwd) if cwd else Path.cwd()
@@ -60,6 +90,8 @@ def main(argv=None, cwd: Optional[str] = None) -> int:
     now = datetime.now(timezone.utc)
     if args.command == "status":
         return cmd_status(root, now)
+    if args.command == "verify":
+        return cmd_verify(root, now, args.only)
     return 2
 
 
