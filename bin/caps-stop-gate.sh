@@ -21,11 +21,11 @@ while :; do
 done
 [ -z "$found" ] && exit 0   # no manifest -> nothing to enforce
 
-KIT="${CAPS_KIT:-/Users/stuart.gano/Documents/claude-test-kit}"
+KIT="${CAPS_KIT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 PYTHON="${CAPS_GATE_PYTHON:-$KIT/.venv/bin/python}"
 if [ ! -x "$PYTHON" ] && ! command -v "$PYTHON" >/dev/null 2>&1; then
   exit 0   # venv/python missing -> fail open
 fi
 
-printf '%s' "$input" | PYTHONPATH="${PYTHONPATH:-$KIT}" "$PYTHON" -m caps gate
+printf '%s' "$input" | PYTHONPATH="$KIT${PYTHONPATH:+:$PYTHONPATH}" "$PYTHON" -m caps gate
 exit 0

@@ -7,7 +7,7 @@ from typing import Optional, Union
 from .manifest import Capability
 from .ledger import LedgerEntry
 from .fingerprint import fingerprint
-from .freshness import parse_duration, waiver_active
+from .freshness import parse_duration, waiver_active, parse_iso
 
 BLOCK_STATES = {"never-proven", "fail", "error", "code-stale"}
 
@@ -33,7 +33,7 @@ def capability_state(
         if capability.freshness == "code":
             return "proven" if entry.fingerprint == fingerprint(capability, root) else "code-stale"
         window = parse_duration(capability.freshness)
-        within = (now - datetime.fromisoformat(entry.at)) < window
+        within = (now - parse_iso(entry.at)) < window
         return "proven" if within else "time-expired"
     # result == "waived" but expired (waiver_active was False), or unknown: no live proof.
     return "never-proven"

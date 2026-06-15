@@ -69,3 +69,12 @@ def test_active_waiver_vs_expired(tmp_path):
 @pytest.mark.unit
 def test_block_states_constant():
     assert BLOCK_STATES == {"never-proven", "fail", "error", "code-stale"}
+
+
+@pytest.mark.unit
+def test_naive_timestamp_does_not_crash(tmp_path):
+    # A hand-edited ledger with a NAIVE timestamp (no offset) must not raise.
+    cap = _cap(tmp_path, tier="live", freshness="24h")
+    naive = LedgerEntry(result="pass", at="2026-06-15T11:00:00", tier="live")  # no tz
+    state = capability_state(cap, naive, tmp_path, NOW)
+    assert state in {"proven", "time-expired"}

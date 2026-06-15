@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import re
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from .ledger import LedgerEntry
@@ -10,6 +10,13 @@ from .manifest import Capability
 
 class FreshnessError(Exception):
     """Raised on an unparseable freshness/duration value."""
+
+
+def parse_iso(s: str) -> datetime:
+    """Parse an ISO-8601 timestamp, coercing naive values to UTC so comparisons
+    against an aware `now` never raise."""
+    dt = datetime.fromisoformat(s)
+    return dt if dt.tzinfo is not None else dt.replace(tzinfo=timezone.utc)
 
 
 _UNITS = {"s": "seconds", "m": "minutes", "h": "hours", "d": "days"}
@@ -38,10 +45,10 @@ def is_fresh(
     if capability.freshness == "code":
         return entry.fingerprint == current_fingerprint
     window = parse_duration(capability.freshness)
-    return (now - datetime.fromisoformat(entry.at)) < window
+    return (now - parse_iso(entry.at)) < window
 
 
 def waiver_active(entry: Optional[LedgerEntry], now: datetime) -> bool:
     if entry is None or not entry.waiver:
         return False
-    return now < datetime.fromisoformat(entry.waiver["until"])
+    return now < parse_iso(entry.waiver["until"])
