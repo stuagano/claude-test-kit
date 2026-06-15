@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import os
 import tempfile
 from pathlib import Path
 from typing import Optional, Union
 
 import yaml
 
+from .backup import backup_file
 from .manifest import load_manifest, ManifestError
 
 HEADER = (
@@ -30,7 +32,9 @@ def _entry_block(entry: dict) -> str:
 def _validate_candidate(candidate_text: str, new_id: str) -> None:
     """Parse the candidate manifest in a temp file. Accept only if it parses AND
     contains new_id. Raises ManifestEditError otherwise (disk never touched)."""
-    tmp = Path(tempfile.mkstemp(suffix=".yaml")[1])
+    fd, tmp_name = tempfile.mkstemp(suffix=".yaml")
+    os.close(fd)
+    tmp = Path(tmp_name)
     try:
         tmp.write_text(candidate_text)
         try:
@@ -99,7 +103,6 @@ def add_capability(
     _validate_candidate(candidate_text, id)   # raises if bad; disk still untouched
 
     if manifest_path.exists():
-        from .backup import backup_file
         backup_file(manifest_path)
     manifest_path.write_text(candidate_text)
 

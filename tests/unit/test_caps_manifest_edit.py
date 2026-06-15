@@ -110,3 +110,36 @@ def test_requires_exactly_one_of_check_or_shell(tmp_path):
         add_capability(m, id="z", deps=[], **_common())
     with pytest.raises(ManifestEditError):
         add_capability(m, id="z", deps=[], check="a::b", shell="x", **_common())
+
+
+import pytest as _pytest
+
+
+@_pytest.mark.parametrize("nasty", [
+    "has: a colon",
+    'has "double" and \'single\' quotes',
+    "leading - dash",
+    "@leading at",
+    "{braces} and [brackets]",
+    "trailing spaces   ",
+])
+def test_arbitrary_scalars_round_trip(tmp_path, nasty):
+    m = tmp_path / "capabilities.yaml"
+    add_capability(m, id="sc", description=nasty, given=nasty, when=nasty,
+                   then=nasty, tier="cheap", deps=[nasty],
+                   check="checks/test_sc.py::test_sc")
+    cap = load_manifest(m)[0]
+    assert cap.description == nasty
+    assert cap.given == nasty
+    assert cap.when == nasty
+    assert cap.then == nasty
+    assert cap.deps == [nasty]
+
+
+def test_stub_default_test_name_when_no_node(tmp_path):
+    m = tmp_path / "capabilities.yaml"
+    add_capability(m, id="nonode", deps=[], check="checks/test_nonode.py",
+                   description="d", given="g", when="w", then="t", tier="cheap")
+    body = (tmp_path / "checks" / "test_nonode.py").read_text()
+    assert "def test_capability" in body
+    assert "NotImplementedError" in body
