@@ -11,6 +11,7 @@ from .ledger import load_ledger, LedgerEntry, save_ledger
 from .fingerprint import fingerprint
 from .freshness import is_fresh, waiver_active, parse_duration, FreshnessError
 from .runner import run_capability
+from .state import capability_state
 
 MANIFEST_NAME = "capabilities.yaml"
 LEDGER_REL = Path(".ctk") / "ledger.json"
@@ -24,15 +25,19 @@ def find_root(start: Path) -> Optional[Path]:
     return None
 
 
-def _status_label(cap, entry, root, now) -> str:
-    if waiver_active(entry, now):
-        return "waived"
-    if entry is None:
-        return "never proven"
-    if entry.result in ("fail", "error"):
-        return entry.result
-    fp = fingerprint(cap, root) if cap.freshness == "code" else ""
-    return "proven" if is_fresh(cap, entry, fp, now) else "stale"
+_DISPLAY = {
+    "proven": "proven",
+    "never-proven": "never proven",
+    "fail": "fail",
+    "error": "error",
+    "code-stale": "stale",
+    "time-expired": "expired",
+    "waived": "waived",
+}
+_GLYPH = {
+    "proven": "OK ", "never proven": "----", "fail": "FAIL",
+    "error": "ERR ", "stale": "STALE", "expired": "EXP ", "waived": "WAIV",
+}
 
 
 def _print_warnings(caps) -> None:
@@ -45,11 +50,10 @@ def cmd_status(root: Path, now: datetime) -> int:
     caps = load_manifest(root / MANIFEST_NAME)
     _print_warnings(caps)
     ledger = load_ledger(root / LEDGER_REL)
-    glyph = {"proven": "OK ", "stale": "STALE", "fail": "FAIL",
-             "error": "ERR ", "waived": "WAIV", "never proven": "----"}
     for cap in caps:
-        label = _status_label(cap, ledger.get(cap.id), root, now)
-        print(f"[{glyph.get(label, '?'):5}] {cap.id:30} {label}")
+        state = capability_state(cap, ledger.get(cap.id), root, now)
+        label = _DISPLAY[state]
+        print(f"[{_GLYPH.get(label, '?'):5}] {cap.id:30} {label}")
     return 0
 
 
