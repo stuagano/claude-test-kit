@@ -284,3 +284,25 @@ def test_gate_malformed_input_fails_open(capsys):
     payload = _json.loads(out)
     assert "additionalContext" in payload["hookSpecificOutput"]
     assert "caps gate failed" in payload["hookSpecificOutput"]["additionalContext"]
+
+
+@pytest.mark.unit
+def test_add_creates_never_proven_capability(tmp_path):
+    rc = main([
+        "add", "--id", "added1", "--tier", "cheap",
+        "--description", "d", "--given", "g", "--when", "w", "--then", "t",
+        "--check", "checks/test_added1.py::test_added1",
+    ], cwd=str(tmp_path))
+    assert rc == 0
+    from caps.manifest import load_manifest
+    caps = load_manifest(tmp_path / "capabilities.yaml")
+    assert [c.id for c in caps] == ["added1"]
+    assert (tmp_path / "checks" / "test_added1.py").exists()
+
+
+@pytest.mark.unit
+def test_add_duplicate_returns_2(tmp_path):
+    args = ["add", "--id", "d", "--tier", "cheap", "--description", "d",
+            "--given", "g", "--when", "w", "--then", "t", "--check", "c.py::t"]
+    assert main(args, cwd=str(tmp_path)) == 0
+    assert main(args, cwd=str(tmp_path)) == 2

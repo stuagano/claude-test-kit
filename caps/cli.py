@@ -16,6 +16,7 @@ from .state import capability_state
 from .project import MANIFEST_NAME, LEDGER_REL, find_root
 from .gate import decide
 from .hookinstall import install_hook, uninstall_hook
+from .manifest_edit import add_capability, ManifestEditError
 
 
 _DISPLAY = {
@@ -139,6 +140,20 @@ def main(argv=None, cwd: Optional[str] = None) -> int:
     uh = sub.add_parser("uninstall-hook", help="remove the Stop-hook gate from settings.json")
     uh.add_argument("--settings", default=str(Path.home() / ".claude" / "settings.json"))
 
+    ad = sub.add_parser("add", help="add a capability to the manifest (never-proven)")
+    ad.add_argument("--id", required=True)
+    ad.add_argument("--description", required=True)
+    ad.add_argument("--given", required=True)
+    ad.add_argument("--when", required=True)
+    ad.add_argument("--then", required=True)
+    ad.add_argument("--tier", required=True, choices=["cheap", "live"])
+    ad.add_argument("--deps", action="append", default=[],
+                    help="dep glob (repeat for multiple)")
+    grp = ad.add_mutually_exclusive_group(required=True)
+    grp.add_argument("--check", help="pytest node, e.g. checks/test_x.py::test_x")
+    grp.add_argument("--shell", help="shell command; exit 0 = proven")
+    ad.add_argument("--manifest", default=None, help="path to capabilities.yaml")
+
     args = parser.parse_args(argv)
     now = datetime.now(timezone.utc)
 
@@ -157,6 +172,24 @@ def main(argv=None, cwd: Optional[str] = None) -> int:
     if args.command == "uninstall-hook":
         uninstall_hook(args.settings)
         print(f"removed Stop-hook gate from {args.settings}")
+        return 0
+
+    if args.command == "add":
+        if args.manifest:
+            manifest_path = Path(args.manifest)
+        else:
+            start = Path(cwd) if cwd else Path.cwd()
+            manifest_path = (find_root(start) or start) / MANIFEST_NAME
+        try:
+            add_capability(
+                manifest_path, id=args.id, description=args.description,
+                given=args.given, when=args.when, then=args.then,
+                tier=args.tier, deps=args.deps, check=args.check, shell=args.shell,
+            )
+        except (ManifestEditError, ManifestError) as e:
+            print(f"error: {e}", file=sys.stderr)
+            return 2
+        print(f"added capability {args.id!r} (never-proven) -> {manifest_path}")
         return 0
 
     start = Path(cwd) if cwd else Path.cwd()
