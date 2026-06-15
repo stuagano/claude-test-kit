@@ -109,3 +109,42 @@ def test_verify_single_capability(tmp_path):
     from caps.ledger import load_ledger
     ledger = load_ledger(p / ".ctk" / "ledger.json")
     assert "a" in ledger and "b" not in ledger
+
+
+@pytest.mark.unit
+def test_ack_records_waiver(tmp_path):
+    p = _project(tmp_path, """
+        capabilities:
+          - id: live-cap
+            description: x
+            given: g
+            when: w
+            then: t
+            tier: live
+            deps: []
+            check: checks/test_x.py::test_x
+    """)
+    rc = main(["ack", "live-cap", "--reason", "offline, no infra"], cwd=str(p))
+    assert rc == 0
+    from caps.ledger import load_ledger
+    entry = load_ledger(p / ".ctk" / "ledger.json")["live-cap"]
+    assert entry.result == "waived"
+    assert entry.waiver["reason"] == "offline, no infra"
+    assert entry.waiver["until"]  # an expiry timestamp was set
+
+
+@pytest.mark.unit
+def test_ack_unknown_capability_errors(tmp_path):
+    _project(tmp_path, """
+        capabilities:
+          - id: real
+            description: x
+            given: g
+            when: w
+            then: t
+            tier: live
+            deps: []
+            check: checks/test_x.py::test_x
+    """)
+    rc = main(["ack", "ghost", "--reason", "x"], cwd=str(tmp_path))
+    assert rc == 2

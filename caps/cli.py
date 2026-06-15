@@ -9,7 +9,7 @@ from typing import Optional
 from .manifest import load_manifest
 from .ledger import load_ledger, LedgerEntry, save_ledger
 from .fingerprint import fingerprint
-from .freshness import is_fresh, waiver_active
+from .freshness import is_fresh, waiver_active, parse_duration
 from .runner import run_capability
 
 MANIFEST_NAME = "capabilities.yaml"
@@ -72,6 +72,25 @@ def cmd_verify(root: Path, now: datetime, only: Optional[str]) -> int:
     return 0 if worst_ok else 1
 
 
+def cmd_ack(root: Path, now: datetime, cap_id: str, reason: str, for_: str) -> int:
+    caps = {c.id: c for c in load_manifest(root / MANIFEST_NAME)}
+    if cap_id not in caps:
+        print(f"error: no capability with id {cap_id!r}", file=sys.stderr)
+        return 2
+    until = (now + parse_duration(for_)).isoformat()
+    ledger = load_ledger(root / LEDGER_REL)
+    ledger[cap_id] = LedgerEntry(
+        result="waived",
+        at=now.isoformat(),
+        tier=caps[cap_id].tier,
+        fingerprint=None,
+        waiver={"reason": reason, "until": until},
+    )
+    save_ledger(root / LEDGER_REL, ledger)
+    print(f"{cap_id}: waived until {until} ({reason})")
+    return 0
+
+
 def main(argv=None, cwd: Optional[str] = None) -> int:
     parser = argparse.ArgumentParser(prog="caps")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -79,6 +98,11 @@ def main(argv=None, cwd: Optional[str] = None) -> int:
     v = sub.add_parser("verify", help="run checks and record proof")
     v.add_argument("--capability", dest="only", default=None,
                    help="verify a single capability by id")
+    a = sub.add_parser("ack", help="record a time-boxed waiver for a capability")
+    a.add_argument("capability", help="capability id to waive")
+    a.add_argument("--reason", required=True, help="why it can't be proven now")
+    a.add_argument("--for", dest="for_", default="24h",
+                   help="waiver duration, e.g. 24h (default), 2d, 30m")
 
     args = parser.parse_args(argv)
     start = Path(cwd) if cwd else Path.cwd()
@@ -92,6 +116,8 @@ def main(argv=None, cwd: Optional[str] = None) -> int:
         return cmd_status(root, now)
     if args.command == "verify":
         return cmd_verify(root, now, args.only)
+    if args.command == "ack":
+        return cmd_ack(root, now, args.capability, args.reason, args.for_)
     return 2
 
 
