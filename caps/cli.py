@@ -6,10 +6,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
-from .manifest import load_manifest
+from .manifest import load_manifest, ManifestError
 from .ledger import load_ledger, LedgerEntry, save_ledger
 from .fingerprint import fingerprint
-from .freshness import is_fresh, waiver_active, parse_duration
+from .freshness import is_fresh, waiver_active, parse_duration, FreshnessError
 from .runner import run_capability
 
 MANIFEST_NAME = "capabilities.yaml"
@@ -35,8 +35,15 @@ def _status_label(cap, entry, root, now) -> str:
     return "proven" if is_fresh(cap, entry, fp, now) else "stale"
 
 
+def _print_warnings(caps) -> None:
+    for cap in caps:
+        for w in cap.warnings:
+            print(f"warning: {cap.id}: {w}", file=sys.stderr)
+
+
 def cmd_status(root: Path, now: datetime) -> int:
     caps = load_manifest(root / MANIFEST_NAME)
+    _print_warnings(caps)
     ledger = load_ledger(root / LEDGER_REL)
     glyph = {"proven": "OK ", "stale": "STALE", "fail": "FAIL",
              "error": "ERR ", "waived": "WAIV", "never proven": "----"}
@@ -48,6 +55,7 @@ def cmd_status(root: Path, now: datetime) -> int:
 
 def cmd_verify(root: Path, now: datetime, only: Optional[str]) -> int:
     caps = load_manifest(root / MANIFEST_NAME)
+    _print_warnings(caps)
     if only is not None:
         caps = [c for c in caps if c.id == only]
         if not caps:
@@ -57,6 +65,11 @@ def cmd_verify(root: Path, now: datetime, only: Optional[str]) -> int:
     ledger = load_ledger(root / LEDGER_REL)
     worst_ok = True
     for cap in caps:
+        # An active waiver suppresses the check during a bare verify; the
+        # existing waived entry is preserved. An explicit --capability overrides.
+        if only is None and waiver_active(ledger.get(cap.id), now):
+            print(f"{cap.id}: skipped (waived)")
+            continue
         result = run_capability(cap, root)
         ledger[cap.id] = LedgerEntry(
             result=result,
@@ -112,12 +125,16 @@ def main(argv=None, cwd: Optional[str] = None) -> int:
         return 2
 
     now = datetime.now(timezone.utc)
-    if args.command == "status":
-        return cmd_status(root, now)
-    if args.command == "verify":
-        return cmd_verify(root, now, args.only)
-    if args.command == "ack":
-        return cmd_ack(root, now, args.capability, args.reason, args.for_)
+    try:
+        if args.command == "status":
+            return cmd_status(root, now)
+        if args.command == "verify":
+            return cmd_verify(root, now, args.only)
+        if args.command == "ack":
+            return cmd_ack(root, now, args.capability, args.reason, args.for_)
+    except (ManifestError, FreshnessError) as e:
+        print(f"error: {e}", file=sys.stderr)
+        return 2
     return 2
 
 

@@ -148,3 +148,100 @@ def test_ack_unknown_capability_errors(tmp_path):
     """)
     rc = main(["ack", "ghost", "--reason", "x"], cwd=str(tmp_path))
     assert rc == 2
+
+
+@pytest.mark.unit
+def test_verify_preserves_active_waiver(tmp_path):
+    p = _project(tmp_path, """
+        capabilities:
+          - id: lc
+            description: x
+            given: g
+            when: w
+            then: t
+            tier: live
+            deps: []
+            check: checks/test_missing.py::test_missing
+    """)
+    # The check file does not exist on purpose; a bare verify must NOT run it
+    # because it is waived.
+    main(["ack", "lc", "--reason", "offline"], cwd=str(p))
+    rc = main(["verify"], cwd=str(p))
+    assert rc == 0
+    from caps.ledger import load_ledger
+    entry = load_ledger(p / ".ctk" / "ledger.json")["lc"]
+    assert entry.result == "waived"
+    assert entry.waiver["reason"] == "offline"
+
+
+@pytest.mark.unit
+def test_verify_explicit_capability_overrides_waiver(tmp_path):
+    p = _project(tmp_path, """
+        capabilities:
+          - id: lc
+            description: x
+            given: g
+            when: w
+            then: t
+            tier: cheap
+            deps: []
+            check: checks/test_ok.py::test_ok
+    """)
+    (p / "checks" / "test_ok.py").write_text("def test_ok():\n    assert True\n")
+    main(["ack", "lc", "--reason", "x"], cwd=str(p))
+    rc = main(["verify", "--capability", "lc"], cwd=str(p))
+    assert rc == 0
+    from caps.ledger import load_ledger
+    assert load_ledger(p / ".ctk" / "ledger.json")["lc"].result == "pass"
+
+
+@pytest.mark.unit
+def test_bad_manifest_returns_2_not_traceback(tmp_path):
+    _project(tmp_path, """
+        capabilities:
+          - id: c
+            description: x
+            given: g
+            when: w
+            then: t
+            tier: bogus
+            deps: []
+            check: checks/x.py::t
+    """)
+    rc = main(["status"], cwd=str(tmp_path))
+    assert rc == 2
+
+
+@pytest.mark.unit
+def test_bad_duration_returns_2(tmp_path):
+    _project(tmp_path, """
+        capabilities:
+          - id: c
+            description: x
+            given: g
+            when: w
+            then: t
+            tier: live
+            deps: []
+            check: checks/x.py::t
+    """)
+    rc = main(["ack", "c", "--reason", "x", "--for", "soon"], cwd=str(tmp_path))
+    assert rc == 2
+
+
+@pytest.mark.unit
+def test_missing_deps_warning_is_displayed(tmp_path, capsys):
+    p = _project(tmp_path, """
+        capabilities:
+          - id: c
+            description: x
+            given: g
+            when: w
+            then: t
+            tier: cheap
+            check: checks/test_ok.py::test_ok
+    """)
+    (p / "checks" / "test_ok.py").write_text("def test_ok():\n    assert True\n")
+    main(["verify"], cwd=str(p))
+    err = capsys.readouterr().err
+    assert "warning" in err.lower() and "deps" in err.lower()

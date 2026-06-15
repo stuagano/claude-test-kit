@@ -16,7 +16,9 @@ def _collect_files(capability: Capability, root: Path) -> list[Path]:
         files.append(root / capability.check_target.split("::", 1)[0])
     for pattern in capability.deps:
         for match in glob.glob(str(root / pattern), recursive=True):
-            files.append(Path(match))
+            p = Path(match)
+            if p.is_file():
+                files.append(p)
     return files
 
 
