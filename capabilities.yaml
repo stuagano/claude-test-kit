@@ -1,0 +1,22 @@
+# Capabilities this kit itself promises — caps, dogfooding caps.
+# Prove with:  PYTHONPATH=. .venv/bin/python -m caps verify
+# Check state: PYTHONPATH=. .venv/bin/python -m caps status
+capabilities:
+  - id: tests-green
+    description: the full ctk + caps test suite passes
+    given: the kit's source and tests
+    when: the pytest suite runs
+    then: every test passes (exit 0)
+    tier: cheap
+    deps: ["caps/**", "ctk/**", "tests/**", "conftest.py", "pytest.ini"]
+    check:
+      shell: .venv/bin/python -m pytest -q -p no:cacheprovider
+
+  - id: gate-blocks-unproven
+    description: the Stop-hook gate blocks a never-proven capability
+    given: a project with an unproven capability
+    when: the gate decides at end of a turn
+    then: it returns a block decision naming the capability
+    tier: cheap
+    deps: ["caps/gate.py", "caps/state.py", "caps/project.py"]
+    check: tests/unit/test_caps_gate.py::test_never_proven_blocks
