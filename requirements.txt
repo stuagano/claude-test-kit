@@ -1,4 +1,5 @@
 pytest>=7.4
+PyYAML>=6.0
 
 # Optional extras (uncomment as you need them):
 # pytest-cov>=4.1          # coverage: ./run_tests.sh cov
