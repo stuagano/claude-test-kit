@@ -15,6 +15,7 @@ from .runner import run_capability
 from .state import capability_state
 from .project import MANIFEST_NAME, LEDGER_REL, find_root
 from .gate import decide
+from .hookinstall import install_hook, uninstall_hook
 
 
 _DISPLAY = {
@@ -131,12 +132,32 @@ def main(argv=None, cwd: Optional[str] = None) -> int:
     a.add_argument("--for", dest="for_", default="24h",
                    help="waiver duration, e.g. 24h (default), 2d, 30m")
     sub.add_parser("gate", help="Stop-hook gate: read hook JSON on stdin, emit allow/block")
+    ih = sub.add_parser("install-hook", help="register the Stop-hook gate in settings.json")
+    ih.add_argument("--settings", default=str(Path.home() / ".claude" / "settings.json"))
+    ih.add_argument("--command", dest="hook_command", default=None,
+                    help="hook command (defaults to this kit's bin/caps-stop-gate.sh)")
+    uh = sub.add_parser("uninstall-hook", help="remove the Stop-hook gate from settings.json")
+    uh.add_argument("--settings", default=str(Path.home() / ".claude" / "settings.json"))
 
     args = parser.parse_args(argv)
     now = datetime.now(timezone.utc)
 
     if args.command == "gate":
         return cmd_gate(sys.stdin.read(), now)
+    if args.command == "install-hook":
+        kit = Path(__file__).resolve().parent.parent
+        cmd = args.hook_command or str(kit / "bin" / "caps-stop-gate.sh")
+        venv_py = kit / ".venv" / "bin" / "python"
+        if not venv_py.exists():
+            print(f"warning: {venv_py} not found — run ./run_tests.sh once so the "
+                  f"hook has an interpreter (gate will fail open until then)", file=sys.stderr)
+        install_hook(args.settings, command=cmd)
+        print(f"installed Stop-hook gate -> {args.settings}")
+        return 0
+    if args.command == "uninstall-hook":
+        uninstall_hook(args.settings)
+        print(f"removed Stop-hook gate from {args.settings}")
+        return 0
 
     start = Path(cwd) if cwd else Path.cwd()
     root = find_root(start)
