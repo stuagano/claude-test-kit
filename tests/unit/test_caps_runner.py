@@ -1,0 +1,45 @@
+import pytest
+from caps.manifest import Capability
+from caps.runner import run_capability
+
+
+def _cap(**kw):
+    base = dict(
+        id="c", description="d", given="g", when="w", then="t",
+        tier="cheap", deps=[], freshness="code",
+        check_kind="shell", check_target="true",
+    )
+    base.update(kw)
+    return Capability(**base)
+
+
+@pytest.mark.unit
+def test_shell_pass(tmp_path):
+    assert run_capability(_cap(check_target="exit 0"), tmp_path) == "pass"
+
+
+@pytest.mark.unit
+def test_shell_fail(tmp_path):
+    assert run_capability(_cap(check_target="exit 1"), tmp_path) == "fail"
+
+
+@pytest.mark.unit
+def test_shell_error_convention_exit_3(tmp_path):
+    # Exit 3 is the reserved "could not run / unreachable" signal.
+    assert run_capability(_cap(check_target="exit 3"), tmp_path) == "error"
+
+
+@pytest.mark.unit
+def test_pytest_pass(tmp_path):
+    (tmp_path / "checks").mkdir()
+    (tmp_path / "checks" / "test_ok.py").write_text("def test_ok():\n    assert True\n")
+    cap = _cap(check_kind="pytest", check_target="checks/test_ok.py::test_ok")
+    assert run_capability(cap, tmp_path) == "pass"
+
+
+@pytest.mark.unit
+def test_pytest_fail(tmp_path):
+    (tmp_path / "checks").mkdir()
+    (tmp_path / "checks" / "test_bad.py").write_text("def test_bad():\n    assert False\n")
+    cap = _cap(check_kind="pytest", check_target="checks/test_bad.py::test_bad")
+    assert run_capability(cap, tmp_path) == "fail"
