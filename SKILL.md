@@ -12,6 +12,16 @@ description: >-
   any time you're about to trust an exit code or a printed "success" message.
   The framework code lives in this skill — copy ctk/ + conftest.py into the
   target project to use it.
+  ALSO includes the `caps` capability layer — a declared `capabilities.yaml` of
+  the things a project promises ("writes to the DB", "the endpoint works", "the
+  deploy is live"), each proven by a real read-after-write check. IMPORTANT
+  in-band behavior: in ANY project that has a `capabilities.yaml`, run
+  `python -m caps verify` (or `status`) and do NOT call work "done" until it is
+  green and fresh; and whenever you do capability-shaped work (write to a DB,
+  deploy, create a table/file/endpoint) in a project with no matching check,
+  PROPOSE adding one to the manifest. Reach for this on "capability", "prove it
+  works", "read-after-write", "make sure we can actually write to X", "verify
+  the deploy", or any claim that a project "can do" something.
 ---
 
 # ctk — the anti-silent-failure test harness
@@ -80,6 +90,55 @@ LLM output isn't deterministic, so never assert on exact wording. Assert on
 - **Bound the loop** — put the whole verification in `run_tests.sh` and gate the
   iterate loop on its exit code. "Done" = the suite is green, not the model
   saying so.
+
+## Capability verification — the `caps` layer (stays-in-band checks)
+
+Beyond writing tests, `caps` proves the capabilities a project *claims*. A
+`capabilities.yaml` declares each promise; each is proven by a real check built
+on `claim_vs_reality`. This is the layer that catches "we said we can write to
+the DB" when we actually can't.
+
+**Do this automatically — don't wait to be asked:**
+
+1. **If the project has a `capabilities.yaml`** (check the repo root): run
+   `python -m caps status` to see state, and `python -m caps verify` before
+   treating work as done. **"Done" means every capability is green and fresh —
+   not that the code ran.** If `verify` is red/stale, that blocks "done"; fix it
+   or, if it genuinely can't be proven right now (offline, no infra), record an
+   explicit waiver: `python -m caps ack <id> --reason "..."`.
+2. **If you do capability-shaped work and there's no matching check** — anything
+   that writes to a DB, deploys, creates a table/file/endpoint, etc. — **propose
+   adding a capability** rather than silently moving on:
+
+   > "This writes to Lakebase but nothing reads it back to confirm. Add a
+   > read-after-write capability to `capabilities.yaml`? (id, given/when/then,
+   > tier, deps, a write→readback→teardown check)"
+
+   On approval, append it. It enters **unproven**, so the next `verify` requires
+   a real run — adding it never fakes the proof.
+
+**Manifest shape:**
+
+```yaml
+capabilities:
+  - id: writes-to-lakebase
+    description: the ingest job writes order rows and they read back
+    given: a reachable Lakebase instance
+    when:  the ingest job runs
+    then:  the written rows are readable back with matching ids
+    tier:  live            # cheap (fingerprint freshness) | live (time-window, default 24h)
+    deps:  [ingest.py]     # changing these invalidates the proof
+    check: checks/test_lakebase_write.py::test_write_readback   # or { shell: "./prove.sh" }
+```
+
+**Using it in a project:** copy `caps/` in alongside `ctk/` (and ensure
+`PyYAML` is installed), or run from this kit with the kit on `PYTHONPATH`:
+`PYTHONPATH=<this-skill-dir> python -m caps verify`.
+
+> Note: enforcement is currently a discipline this skill reminds you of. A
+> `Stop` hook that blocks "done" automatically (so it can't be skipped) is the
+> planned Phase 2 — until it lands, treat the steps above as mandatory whenever
+> a `capabilities.yaml` is present.
 
 ## Unit vs. integration
 
