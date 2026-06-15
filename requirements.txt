@@ -1,0 +1,8 @@
+pytest>=7.4
+
+# Optional extras (uncomment as you need them):
+# pytest-cov>=4.1          # coverage: ./run_tests.sh cov
+# pytest-xdist>=3.5        # parallel runs: pytest -n auto
+# pytest-mock>=3.12        # nicer mocker fixture (monkeypatch works without it)
+# pytest-httpserver>=1.0   # richer fake HTTP than the stdlib live_server fixture
+# testcontainers>=4.0      # real Postgres/Redis/etc in Docker for integration
