@@ -8,10 +8,26 @@ Phase 1 (this package) is the manual runner: `python -m caps verify`.
 """
 
 from .manifest import Capability, load_manifest, ManifestError
-from .ledger import LedgerEntry, load_ledger, save_ledger
-from .fingerprint import fingerprint
-from .freshness import parse_duration, is_fresh, waiver_active, FreshnessError
-from .runner import run_capability
+
+try:
+    from .ledger import LedgerEntry, load_ledger, save_ledger
+except ImportError:
+    pass
+
+try:
+    from .fingerprint import fingerprint
+except ImportError:
+    pass
+
+try:
+    from .freshness import parse_duration, is_fresh, waiver_active, FreshnessError
+except ImportError:
+    pass
+
+try:
+    from .runner import run_capability
+except ImportError:
+    pass
 
 __all__ = [
     "Capability",
