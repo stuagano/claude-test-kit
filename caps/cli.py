@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -13,6 +14,7 @@ from .freshness import is_fresh, waiver_active, parse_duration, FreshnessError
 from .runner import run_capability
 from .state import capability_state
 from .project import MANIFEST_NAME, LEDGER_REL, find_root
+from .gate import decide
 
 
 _DISPLAY = {
@@ -98,6 +100,24 @@ def cmd_ack(root: Path, now: datetime, cap_id: str, reason: str, for_: str) -> i
     return 0
 
 
+def cmd_gate(stdin_text: str, now: datetime) -> int:
+    try:
+        payload = json.loads(stdin_text or "{}")
+        decision = decide(payload, now)
+    except Exception as e:  # fail open, but visibly
+        print(json.dumps({"hookSpecificOutput": {
+            "hookEventName": "Stop",
+            "additionalContext": f"caps gate failed: {e} — capability enforcement skipped this turn",
+        }}))
+        return 0
+    if decision.block:
+        print(json.dumps({"decision": "block", "reason": decision.reason}))
+    elif decision.note:
+        print(json.dumps({"hookSpecificOutput": {
+            "hookEventName": "Stop", "additionalContext": decision.note}}))
+    return 0
+
+
 def main(argv=None, cwd: Optional[str] = None) -> int:
     parser = argparse.ArgumentParser(prog="caps")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -110,15 +130,20 @@ def main(argv=None, cwd: Optional[str] = None) -> int:
     a.add_argument("--reason", required=True, help="why it can't be proven now")
     a.add_argument("--for", dest="for_", default="24h",
                    help="waiver duration, e.g. 24h (default), 2d, 30m")
+    sub.add_parser("gate", help="Stop-hook gate: read hook JSON on stdin, emit allow/block")
 
     args = parser.parse_args(argv)
+    now = datetime.now(timezone.utc)
+
+    if args.command == "gate":
+        return cmd_gate(sys.stdin.read(), now)
+
     start = Path(cwd) if cwd else Path.cwd()
     root = find_root(start)
     if root is None:
         print(f"error: no {MANIFEST_NAME} found from {start}", file=sys.stderr)
         return 2
 
-    now = datetime.now(timezone.utc)
     try:
         if args.command == "status":
             return cmd_status(root, now)

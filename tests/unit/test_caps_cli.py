@@ -245,3 +245,42 @@ def test_missing_deps_warning_is_displayed(tmp_path, capsys):
     main(["verify"], cwd=str(p))
     err = capsys.readouterr().err
     assert "warning" in err.lower() and "deps" in err.lower()
+
+
+import json as _json
+
+
+@pytest.mark.unit
+def test_gate_blocks_on_unproven(tmp_path, capsys):
+    p = _project(tmp_path, """
+        capabilities:
+          - id: g1
+            description: d
+            given: g
+            when: w
+            then: t
+            tier: cheap
+            deps: []
+            check: checks/test_x.py::test_x
+    """)
+    payload = _json.dumps({"cwd": str(p), "stop_hook_active": False})
+    from caps.cli import cmd_gate
+    from datetime import datetime, timezone
+    rc = cmd_gate(payload, datetime(2026, 6, 15, tzinfo=timezone.utc))
+    out = capsys.readouterr().out
+    assert rc == 0
+    decision = _json.loads(out)
+    assert decision["decision"] == "block"
+    assert "g1" in decision["reason"]
+
+
+@pytest.mark.unit
+def test_gate_malformed_input_fails_open(capsys):
+    from caps.cli import cmd_gate
+    from datetime import datetime, timezone
+    rc = cmd_gate("not json", datetime(2026, 6, 15, tzinfo=timezone.utc))
+    out = capsys.readouterr().out
+    assert rc == 0
+    payload = _json.loads(out)
+    assert "additionalContext" in payload["hookSpecificOutput"]
+    assert "caps gate failed" in payload["hookSpecificOutput"]["additionalContext"]
