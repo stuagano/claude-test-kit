@@ -12,17 +12,7 @@ from .fingerprint import fingerprint
 from .freshness import is_fresh, waiver_active, parse_duration, FreshnessError
 from .runner import run_capability
 from .state import capability_state
-
-MANIFEST_NAME = "capabilities.yaml"
-LEDGER_REL = Path(".ctk") / "ledger.json"
-
-
-def find_root(start: Path) -> Optional[Path]:
-    start = start.resolve()
-    for d in (start, *start.parents):
-        if (d / MANIFEST_NAME).is_file():
-            return d
-    return None
+from .project import MANIFEST_NAME, LEDGER_REL, find_root
 
 
 _DISPLAY = {
