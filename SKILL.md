@@ -108,14 +108,22 @@ the DB" when we actually can't.
    explicit waiver: `python -m caps ack <id> --reason "..."`.
 2. **If you do capability-shaped work and there's no matching check** — anything
    that writes to a DB, deploys, creates a table/file/endpoint, etc. — **propose
-   adding a capability** rather than silently moving on:
+   a capability** rather than silently moving on. Surface a concrete proposal
+   (id, given/when/then, tier, deps, check), and on the user's **explicit yes**
+   wire it in with `caps add` — never hand-edit `capabilities.yaml`:
 
-   > "This writes to Lakebase but nothing reads it back to confirm. Add a
-   > read-after-write capability to `capabilities.yaml`? (id, given/when/then,
-   > tier, deps, a write→readback→teardown check)"
+   ```
+   python -m caps add --id <id> --tier <cheap|live> \
+     --description "..." --given "..." --when "..." --then "..." \
+     --deps <glob> [--deps <glob> ...] \
+     --check checks/test_<id>.py::test_<id>      # or --shell "./prove.sh"
+   ```
 
-   On approval, append it. It enters **unproven**, so the next `verify` requires
-   a real run — adding it never fakes the proof.
+   `caps add` creates the entry as **never-proven** and scaffolds a *failing*
+   check stub — it cannot fake a pass. Then implement the scaffolded check body
+   (the real write → readback → teardown) and run
+   `python -m caps verify --capability <id>` to actually prove it. You are
+   advisory: never add a capability without the user's explicit yes.
 
 **Manifest shape:**
 
