@@ -3,6 +3,7 @@ from pathlib import Path
 import pytest
 
 from caps import initializer
+from caps.manifest import load_manifest
 
 
 @pytest.mark.unit
@@ -116,3 +117,24 @@ def test_ensure_pytest_config_detects_setup_cfg_section(tmp_path):
     r = initializer.ensure_pytest_config(tmp_path)
     assert r.action == "skipped"
     assert not (tmp_path / "pytest.ini").exists()
+
+
+@pytest.mark.unit
+def test_starter_manifest_written_and_parses_empty(tmp_path):
+    results = initializer.ensure_starter_manifest(tmp_path)
+
+    manifest = tmp_path / "capabilities.yaml"
+    assert manifest.is_file()
+    assert load_manifest(manifest) == []          # parses, zero capabilities
+    assert (tmp_path / "checks" / ".gitkeep").is_file()
+    assert any(r.action == "created" and r.target.endswith("capabilities.yaml")
+               for r in results)
+
+
+@pytest.mark.unit
+def test_starter_manifest_never_overwrites_existing(tmp_path):
+    (tmp_path / "capabilities.yaml").write_text("capabilities:\n  - mine\n")
+    results = initializer.ensure_starter_manifest(tmp_path)
+    assert (tmp_path / "capabilities.yaml").read_text() == "capabilities:\n  - mine\n"
+    assert any(r.action == "skipped" and r.target.endswith("capabilities.yaml")
+               for r in results)

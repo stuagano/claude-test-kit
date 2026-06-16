@@ -95,6 +95,50 @@ def ensure_pytest_config(target: Union[str, Path]) -> StepResult:
     return StepResult("created", str(dst), "wrote minimal pytest.ini")
 
 
+_STARTER_MANIFEST = """\
+# Capabilities THIS project promises — managed with `caps`.
+# Prove with:   python -m caps verify
+# Check state:  python -m caps status
+# Add one with: python -m caps add --id <id> --tier <cheap|live> \\
+#                 --description "..." --given "..." --when "..." --then "..." \\
+#                 --deps <glob> --check checks/test_<id>.py::test_<id>
+#
+# Example (delete and run `caps add` instead of hand-editing):
+#   capabilities:
+#     - id: writes-to-db
+#       description: rows written by the ingest job read back with matching ids
+#       given: a reachable database
+#       when: the ingest job runs
+#       then: the written rows are readable back
+#       tier: live
+#       deps: [ingest.py]
+#       check: checks/test_db_write.py::test_write_readback
+capabilities: []
+"""
+
+
+def ensure_starter_manifest(target: Union[str, Path]) -> list[StepResult]:
+    target = Path(target)
+    results: list[StepResult] = []
+
+    manifest = target / "capabilities.yaml"
+    if manifest.exists():
+        results.append(StepResult("skipped", str(manifest), "manifest already present"))
+    else:
+        manifest.write_text(_STARTER_MANIFEST)
+        results.append(StepResult("created", str(manifest), "wrote starter capabilities.yaml"))
+
+    checks = target / "checks"
+    keep = checks / ".gitkeep"
+    if keep.exists():
+        results.append(StepResult("skipped", str(checks), "checks/ already present"))
+    else:
+        checks.mkdir(parents=True, exist_ok=True)
+        keep.write_text("")
+        results.append(StepResult("created", str(checks), "created checks/"))
+    return results
+
+
 def vendor_framework(
     target: Union[str, Path], kit: Union[str, Path], force: bool
 ) -> list[StepResult]:
