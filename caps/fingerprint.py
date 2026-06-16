@@ -8,6 +8,12 @@ from typing import Union
 from .manifest import Capability
 
 
+def _is_artifact(p: Path) -> bool:
+    # Derived build artifacts must never be hashed — they regenerate on import
+    # and would make a capability perpetually "stale" with no source change.
+    return "__pycache__" in p.parts or p.suffix in {".pyc", ".pyo"}
+
+
 def _collect_files(capability: Capability, root: Path) -> list[Path]:
     files: list[Path] = []
     # The check file itself (pytest node "path::test" -> "path"). Shell checks
@@ -17,7 +23,7 @@ def _collect_files(capability: Capability, root: Path) -> list[Path]:
     for pattern in capability.deps:
         for match in glob.glob(str(root / pattern), recursive=True):
             p = Path(match)
-            if p.is_file():
+            if p.is_file() and not _is_artifact(p):
                 files.append(p)
     return files
 

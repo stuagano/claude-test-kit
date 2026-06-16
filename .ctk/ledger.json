@@ -7,8 +7,8 @@
     "waiver": null
   },
   "tests-green": {
-    "at": "2026-06-15T22:28:54.811067+00:00",
-    "fingerprint": "sha256:5b75aff512dcaa096d6f3dbb9ad0c58c22d43bbd7e30e5e09400525da29d3b9c",
+    "at": "2026-06-16T13:06:38.243360+00:00",
+    "fingerprint": "sha256:614c55566d56d42e923bdb9289286467e6ecd57355c9723b11fdeaeb8bdf1319",
     "result": "pass",
     "tier": "cheap",
     "waiver": null

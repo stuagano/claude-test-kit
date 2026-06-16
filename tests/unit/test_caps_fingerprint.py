@@ -47,3 +47,23 @@ def test_glob_deps_matched(tmp_path):
     fp1 = fingerprint(cap, tmp_path)
     (tmp_path / "lib" / "a.py").write_text("a = 99\n")
     assert fingerprint(cap, tmp_path) != fp1
+
+
+@pytest.mark.unit
+def test_ignores_pycache_and_pyc(tmp_path):
+    # Build artifacts under a dep glob must not affect the fingerprint, or a
+    # capability goes "stale" every time Python recompiles. Real source still does.
+    (tmp_path / "checks").mkdir()
+    (tmp_path / "checks" / "test_x.py").write_text("def test_x(): pass\n")
+    (tmp_path / "pkg").mkdir()
+    (tmp_path / "pkg" / "a.py").write_text("a = 1\n")
+    cap = _cap(deps=["pkg/**"])
+
+    fp1 = fingerprint(cap, tmp_path)
+    (tmp_path / "pkg" / "__pycache__").mkdir()
+    (tmp_path / "pkg" / "__pycache__" / "a.cpython-314.pyc").write_text("BYTECODE-v1")
+    assert fingerprint(cap, tmp_path) == fp1
+    (tmp_path / "pkg" / "__pycache__" / "a.cpython-314.pyc").write_text("BYTECODE-v2")
+    assert fingerprint(cap, tmp_path) == fp1
+    (tmp_path / "pkg" / "a.py").write_text("a = 2\n")
+    assert fingerprint(cap, tmp_path) != fp1
