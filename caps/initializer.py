@@ -7,6 +7,12 @@ from typing import Union
 
 _IGNORE = shutil.ignore_patterns("__pycache__", "*.pyc", "*.pyo")
 FRAMEWORK_DIRS = ("ctk", "caps", "bin")
+_CONFTEST_WARNING = (
+    "kept your existing conftest.py; until you add the kit's `workspace` fixture "
+    "and the autouse `fail_on_error_log` guard to it, the error-log guard is OFF "
+    "and any vendored check using the `workspace` fixture will error. See the "
+    "kit's conftest.py for the two fixtures to copy in."
+)
 
 
 @dataclass
@@ -36,6 +42,15 @@ def _vendor_one(src: Path, dst: Path, force: bool) -> StepResult:
         return StepResult("overwritten", str(dst), f"re-vendored {name}/ (--force)")
     shutil.copytree(src, dst, ignore=_IGNORE)
     return StepResult("created", str(dst), f"vendored {name}/")
+
+
+def ensure_conftest(target: Union[str, Path], kit: Union[str, Path]) -> StepResult:
+    target, kit = Path(target), Path(kit)
+    dst = target / "conftest.py"
+    if dst.exists():
+        return StepResult("warned", str(dst), _CONFTEST_WARNING)
+    shutil.copy2(kit / "conftest.py", dst)
+    return StepResult("created", str(dst), "copied conftest.py (workspace + error-log guard)")
 
 
 def vendor_framework(

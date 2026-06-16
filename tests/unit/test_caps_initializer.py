@@ -52,3 +52,33 @@ def test_vendor_refuses_to_target_the_kit_itself(tmp_path):
     (kit / "ctk" / "mod.py").write_text("x = 1\n")
     with pytest.raises(ValueError):
         initializer.vendor_framework(kit, kit, force=True)
+
+
+@pytest.mark.unit
+def test_ensure_conftest_copies_when_absent(tmp_path):
+    kit = tmp_path / "kit"
+    kit.mkdir()
+    (kit / "conftest.py").write_text("# kit conftest\n")
+    target = tmp_path / "proj"
+    target.mkdir()
+
+    r = initializer.ensure_conftest(target, kit)
+
+    assert (target / "conftest.py").read_text() == "# kit conftest\n"
+    assert r.action == "created"
+
+
+@pytest.mark.unit
+def test_ensure_conftest_warns_loudly_when_present(tmp_path):
+    kit = tmp_path / "kit"
+    kit.mkdir()
+    (kit / "conftest.py").write_text("# kit conftest\n")
+    target = tmp_path / "proj"
+    target.mkdir()
+    (target / "conftest.py").write_text("# user's own conftest\n")
+
+    r = initializer.ensure_conftest(target, kit)
+
+    assert (target / "conftest.py").read_text() == "# user's own conftest\n"  # untouched
+    assert r.action == "warned"
+    assert "error-log guard is OFF" in r.detail
