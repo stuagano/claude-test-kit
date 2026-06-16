@@ -82,3 +82,37 @@ def test_ensure_conftest_warns_loudly_when_present(tmp_path):
     assert (target / "conftest.py").read_text() == "# user's own conftest\n"  # untouched
     assert r.action == "warned"
     assert "error-log guard is OFF" in r.detail
+
+
+@pytest.mark.unit
+def test_ensure_pytest_config_writes_when_absent(tmp_path):
+    r = initializer.ensure_pytest_config(tmp_path)
+    ini = (tmp_path / "pytest.ini").read_text()
+    assert "pythonpath = ." in ini
+    assert "integration:" in ini and "allow_error_logs:" in ini
+    assert r.action == "created"
+
+
+@pytest.mark.unit
+def test_ensure_pytest_config_skips_when_pytest_ini_present(tmp_path):
+    (tmp_path / "pytest.ini").write_text("[pytest]\n")
+    r = initializer.ensure_pytest_config(tmp_path)
+    assert r.action == "skipped"
+
+
+@pytest.mark.unit
+def test_ensure_pytest_config_detects_pyproject_table(tmp_path):
+    (tmp_path / "pyproject.toml").write_text(
+        "[tool.pytest.ini_options]\npythonpath = ['.']\n"
+    )
+    r = initializer.ensure_pytest_config(tmp_path)
+    assert r.action == "skipped"
+    assert not (tmp_path / "pytest.ini").exists()
+
+
+@pytest.mark.unit
+def test_ensure_pytest_config_detects_setup_cfg_section(tmp_path):
+    (tmp_path / "setup.cfg").write_text("[tool:pytest]\nmarkers =\n    unit\n")
+    r = initializer.ensure_pytest_config(tmp_path)
+    assert r.action == "skipped"
+    assert not (tmp_path / "pytest.ini").exists()

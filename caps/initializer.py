@@ -53,6 +53,48 @@ def ensure_conftest(target: Union[str, Path], kit: Union[str, Path]) -> StepResu
     return StepResult("created", str(dst), "copied conftest.py (workspace + error-log guard)")
 
 
+_PYTEST_INI = """\
+[pytest]
+# Written by `caps init`. Lets vendored `ctk`/`caps` import without installing,
+# and registers the markers their checks use.
+pythonpath = .
+addopts = -ra --strict-markers
+markers =
+    unit: fast, isolated tests with no real I/O (mock the boundaries)
+    integration: tests that hit real dependencies (DB, HTTP, subprocess)
+    slow: long-running tests, excluded from the quick loop
+    allow_error_logs: permit ERROR/CRITICAL logs without failing the test
+"""
+
+
+def _has_pytest_config(target: Path) -> bool:
+    if (target / "pytest.ini").is_file():
+        return True
+    pp = target / "pyproject.toml"
+    if pp.is_file() and "[tool.pytest.ini_options]" in pp.read_text():
+        return True
+    sc = target / "setup.cfg"
+    if sc.is_file() and "[tool:pytest]" in sc.read_text():
+        return True
+    tox = target / "tox.ini"
+    if tox.is_file() and "[pytest]" in tox.read_text():
+        return True
+    return False
+
+
+def ensure_pytest_config(target: Union[str, Path]) -> StepResult:
+    target = Path(target)
+    if _has_pytest_config(target):
+        return StepResult(
+            "skipped", str(target),
+            "existing pytest config found; ensure it sets `pythonpath = .` and the "
+            "unit/integration/slow/allow_error_logs markers (see the kit's pytest.ini)",
+        )
+    dst = target / "pytest.ini"
+    dst.write_text(_PYTEST_INI)
+    return StepResult("created", str(dst), "wrote minimal pytest.ini")
+
+
 def vendor_framework(
     target: Union[str, Path], kit: Union[str, Path], force: bool
 ) -> list[StepResult]:
