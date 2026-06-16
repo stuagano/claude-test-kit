@@ -43,3 +43,12 @@ def test_vendor_skips_existing_without_force_overwrites_with_force(tmp_path):
     forced = initializer.vendor_framework(target, kit, force=True)
     assert (target / "ctk" / "mod.py").read_text() == "new = 2\n"
     assert any(r.action == "overwritten" and r.target.endswith("ctk") for r in forced)
+
+
+@pytest.mark.unit
+def test_vendor_refuses_to_target_the_kit_itself(tmp_path):
+    kit = tmp_path / "kit"
+    (kit / "ctk").mkdir(parents=True)
+    (kit / "ctk" / "mod.py").write_text("x = 1\n")
+    with pytest.raises(ValueError):
+        initializer.vendor_framework(kit, kit, force=True)
