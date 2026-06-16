@@ -138,3 +138,35 @@ def test_starter_manifest_never_overwrites_existing(tmp_path):
     assert (tmp_path / "capabilities.yaml").read_text() == "capabilities:\n  - mine\n"
     assert any(r.action == "skipped" and r.target.endswith("capabilities.yaml")
                for r in results)
+
+
+@pytest.mark.unit
+def test_gitignore_created_with_all_entries_when_absent(tmp_path):
+    r = initializer.ensure_gitignore(tmp_path)
+    text = (tmp_path / ".gitignore").read_text()
+    for entry in (".venv/", "__pycache__/", ".pytest_cache/", "*.bak.*"):
+        assert entry in text
+    assert ".ctk/" not in text  # the ledger is meant to be committed
+    assert r.action == "created"
+
+
+@pytest.mark.unit
+def test_gitignore_appends_only_missing_entries(tmp_path):
+    (tmp_path / ".gitignore").write_text("node_modules/\n.venv/\n")
+    r = initializer.ensure_gitignore(tmp_path)
+    text = (tmp_path / ".gitignore").read_text()
+    assert text.count(".venv/") == 1            # not duplicated
+    assert "node_modules/" in text              # user's lines preserved
+    assert "*.bak.*" in text                    # missing one added
+    assert r.action == "created"                # "created" = we added entries
+
+
+@pytest.mark.unit
+def test_gitignore_noop_when_all_present(tmp_path):
+    (tmp_path / ".gitignore").write_text(
+        ".venv/\n__pycache__/\n.pytest_cache/\n*.bak.*\n"
+    )
+    before = (tmp_path / ".gitignore").read_text()
+    r = initializer.ensure_gitignore(tmp_path)
+    assert (tmp_path / ".gitignore").read_text() == before
+    assert r.action == "skipped"

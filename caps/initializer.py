@@ -139,6 +139,25 @@ def ensure_starter_manifest(target: Union[str, Path]) -> list[StepResult]:
     return results
 
 
+_GITIGNORE_ENTRIES = (".venv/", "__pycache__/", ".pytest_cache/", "*.bak.*")
+
+
+def ensure_gitignore(target: Union[str, Path]) -> StepResult:
+    target = Path(target)
+    gi = target / ".gitignore"
+    existing = gi.read_text() if gi.exists() else ""
+    present = {line.strip() for line in existing.splitlines()}
+    missing = [e for e in _GITIGNORE_ENTRIES if e not in present]
+    if not missing:
+        return StepResult("skipped", str(gi), ".gitignore already covers caps artifacts")
+
+    block = "" if existing == "" else (existing if existing.endswith("\n") else existing + "\n")
+    block += "\n# caps / python artifacts (added by caps init)\n" + "\n".join(missing) + "\n"
+    gi.write_text(block)
+    return StepResult("created", str(gi), f"added {len(missing)} .gitignore entr"
+                      f"{'y' if len(missing) == 1 else 'ies'}")
+
+
 def vendor_framework(
     target: Union[str, Path], kit: Union[str, Path], force: bool
 ) -> list[StepResult]:
