@@ -170,3 +170,47 @@ def test_gitignore_noop_when_all_present(tmp_path):
     r = initializer.ensure_gitignore(tmp_path)
     assert (tmp_path / ".gitignore").read_text() == before
     assert r.action == "skipped"
+
+
+@pytest.mark.unit
+def test_pyyaml_step_instructs_by_default_and_does_not_install(tmp_path, monkeypatch):
+    calls = []
+    monkeypatch.setattr(initializer, "_pip_install", lambda pkg: calls.append(pkg))
+
+    r = initializer.maybe_install_pyyaml(install_deps=False)
+
+    assert r.action == "instructed"
+    assert "PyYAML" in r.detail
+    assert calls == []  # env never mutated without opt-in
+
+
+@pytest.mark.unit
+def test_pyyaml_step_installs_on_opt_in(tmp_path, monkeypatch):
+    calls = []
+    monkeypatch.setattr(initializer, "_pip_install", lambda pkg: calls.append(pkg))
+
+    r = initializer.maybe_install_pyyaml(install_deps=True)
+
+    assert r.action == "installed"
+    assert calls == ["PyYAML"]
+
+
+@pytest.mark.unit
+def test_init_project_lays_down_everything_in_empty_dir(tmp_path, monkeypatch):
+    monkeypatch.setattr(initializer, "_pip_install", lambda pkg: None)
+    target = tmp_path / "proj"
+    target.mkdir()
+    kit = initializer.kit_root()  # vendor the real kit
+
+    results = initializer.init_project(target, kit=kit, force=False, install_deps=False)
+
+    for d in ("ctk", "caps", "bin"):
+        assert (target / d).is_dir()
+        assert not (target / d / "__pycache__").exists()
+    assert (target / "conftest.py").is_file()
+    assert (target / "pytest.ini").is_file()
+    assert (target / "capabilities.yaml").is_file()
+    assert (target / "checks" / ".gitkeep").is_file()
+    assert ".venv/" in (target / ".gitignore").read_text()
+    assert all(isinstance(r, initializer.StepResult) for r in results)
+    assert any(r.action == "instructed" for r in results)  # the PyYAML line

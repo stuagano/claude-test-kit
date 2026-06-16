@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import shutil
+import subprocess
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Union
@@ -170,4 +172,37 @@ def vendor_framework(
         if not src.is_dir():
             continue  # nothing to vendor for a kit missing this dir
         results.append(_vendor_one(src, target / name, force))
+    return results
+
+
+def _pip_install(pkg: str) -> None:
+    subprocess.run([sys.executable, "-m", "pip", "install", pkg], check=True)
+
+
+def maybe_install_pyyaml(install_deps: bool) -> StepResult:
+    line = f"{sys.executable} -m pip install PyYAML"
+    if install_deps:
+        _pip_install("PyYAML")
+        return StepResult("installed", "PyYAML", "pip-installed PyYAML")
+    return StepResult("instructed", "PyYAML", f"caps needs PyYAML — run: {line}")
+
+
+def init_project(
+    target: Union[str, Path],
+    *,
+    kit: Union[str, Path, None] = None,
+    force: bool = False,
+    install_deps: bool = False,
+) -> list[StepResult]:
+    target = Path(target)
+    kit = Path(kit) if kit is not None else kit_root()
+    target.mkdir(parents=True, exist_ok=True)
+
+    results: list[StepResult] = []
+    results += vendor_framework(target, kit, force)
+    results.append(ensure_conftest(target, kit))
+    results.append(ensure_pytest_config(target))
+    results += ensure_starter_manifest(target)
+    results.append(ensure_gitignore(target))
+    results.append(maybe_install_pyyaml(install_deps))
     return results
