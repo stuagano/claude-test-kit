@@ -113,3 +113,94 @@ capabilities:
     deps:
     - caps/state.py
     check: tests/unit/test_caps_gate.py::test_time_expired_does_not_block_but_notes
+  - id: expect-collects-all-failures
+    description: expect() runs every contract check and reports all failures at once
+    given: output that violates several declared contracts
+    when: expect(...).<checks>.verify() runs
+    then: it surfaces all violations together, not just the first
+    tier: cheap
+    deps:
+    - ctk/contracts.py
+    check: tests/unit/test_ctk_unit.py::test_contract_collects_all_failures
+  - id: claim-vs-reality-flags-false-alarm
+    description: claim_vs_reality also catches a claimed failure that actually succeeded
+    given: a step that reports failure though reality is correct
+    when: claim_vs_reality reconciles claim against reality
+    then: it flags the mismatch instead of trusting the claim
+    tier: cheap
+    deps:
+    - ctk/verify.py
+    check: tests/unit/test_ctk_unit.py::test_claim_vs_reality_flags_false_alarm
+  - id: error-log-guard-opt-out
+    description: a test can opt out of the error-log guard with the allow_error_logs
+      marker
+    given: a test that intentionally logs at ERROR
+    when: it is marked allow_error_logs
+    then: the guard permits it instead of failing the test
+    tier: cheap
+    deps:
+    - conftest.py
+    check: tests/unit/test_error_log_guard.py::test_opt_out_marker_allows_error_logs
+  - id: manifest-rejects-bad-tier
+    description: the manifest loader rejects an invalid tier value
+    given: a capability declaring an unknown tier
+    when: load_manifest parses it
+    then: it raises ManifestError rather than silently accepting
+    tier: cheap
+    deps:
+    - caps/manifest.py
+    check: tests/unit/test_caps_manifest.py::test_bad_tier_raises
+  - id: manifest-rejects-duplicate-ids
+    description: the manifest loader rejects duplicate capability ids
+    given: two capabilities sharing an id
+    when: load_manifest parses the manifest
+    then: it raises ManifestError
+    tier: cheap
+    deps:
+    - caps/manifest.py
+    check: tests/unit/test_caps_manifest.py::test_duplicate_ids_raise
+  - id: ledger-round-trips
+    description: the ledger writes and reads back proof state losslessly
+    given: a ledger entry with result, timestamp, fingerprint, waiver
+    when: it is saved and loaded
+    then: the loaded entry equals what was written
+    tier: cheap
+    deps:
+    - caps/ledger.py
+    check: tests/unit/test_caps_ledger.py::test_round_trip
+  - id: runner-exit3-is-error
+    description: the runner distinguishes 'could not run' (error) from a real failure
+    given: a shell check that exits 3 (the reserved unreachable code)
+    when: run_capability classifies the outcome
+    then: it returns error, not fail
+    tier: cheap
+    deps:
+    - caps/runner.py
+    check: tests/unit/test_caps_runner.py::test_shell_error_convention_exit_3
+  - id: verify-fails-nonzero
+    description: caps verify exits non-zero when any capability check fails
+    given: a capability whose check fails
+    when: caps verify runs it
+    then: the command exits non-zero and records the failure
+    tier: cheap
+    deps:
+    - caps/cli.py
+    check: tests/unit/test_caps_cli.py::test_verify_records_fail_and_exits_nonzero
+  - id: gate-fails-open-on-bad-input
+    description: the gate fails open (never bricks a turn) on malformed hook input
+    given: a Stop-hook payload that is not valid JSON
+    when: caps gate processes it
+    then: it exits 0 with a visible additionalContext note instead of erroring
+    tier: cheap
+    deps:
+    - caps/gate.py
+    check: tests/unit/test_caps_cli.py::test_gate_malformed_input_fails_open
+  - id: install-hook-idempotent
+    description: install-hook can be run repeatedly without duplicating the hook entry
+    given: settings.json that already has the caps Stop hook
+    when: install-hook runs again
+    then: exactly one caps hook entry remains
+    tier: cheap
+    deps:
+    - caps/hookinstall.py
+    check: tests/unit/test_caps_hookinstall.py::test_install_is_idempotent

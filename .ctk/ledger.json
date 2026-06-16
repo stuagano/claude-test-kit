@@ -1,83 +1,153 @@
 {
   "add-cannot-fake-a-pass": {
-    "at": "2026-06-16T14:34:27.286802+00:00",
+    "at": "2026-06-16T14:40:11.444393+00:00",
     "fingerprint": "sha256:1ec8a12089bf90b325203053cea11a648afae84eaa2c223292e748582bba06f4",
     "result": "pass",
     "tier": "cheap",
     "waiver": null
   },
   "add-validates-before-write": {
-    "at": "2026-06-16T14:34:27.286802+00:00",
+    "at": "2026-06-16T14:40:11.444393+00:00",
     "fingerprint": "sha256:024f059de625f49e2af26d5109c2d1ec8e3de9772f0061f42a93c5314ebf13a4",
     "result": "pass",
     "tier": "cheap",
     "waiver": null
   },
+  "claim-vs-reality-flags-false-alarm": {
+    "at": "2026-06-16T14:40:11.444393+00:00",
+    "fingerprint": "sha256:adadcf682b7f1193b41b82af2e6841173d352e73244b65bfc4bdf9e4c363d8ff",
+    "result": "pass",
+    "tier": "cheap",
+    "waiver": null
+  },
   "claim-vs-reality-trips": {
-    "at": "2026-06-16T14:34:27.286802+00:00",
+    "at": "2026-06-16T14:40:11.444393+00:00",
     "fingerprint": "sha256:adadcf682b7f1193b41b82af2e6841173d352e73244b65bfc4bdf9e4c363d8ff",
     "result": "pass",
     "tier": "cheap",
     "waiver": null
   },
   "error-log-guard-fails-test": {
-    "at": "2026-06-16T14:34:27.286802+00:00",
+    "at": "2026-06-16T14:40:11.444393+00:00",
     "fingerprint": "sha256:86d35296ad8f4a35607cf551c03112ccd59f85a0d9e4a952724514b6a9363c09",
     "result": "pass",
     "tier": "cheap",
     "waiver": null
   },
+  "error-log-guard-opt-out": {
+    "at": "2026-06-16T14:40:11.444393+00:00",
+    "fingerprint": "sha256:86d35296ad8f4a35607cf551c03112ccd59f85a0d9e4a952724514b6a9363c09",
+    "result": "pass",
+    "tier": "cheap",
+    "waiver": null
+  },
+  "expect-collects-all-failures": {
+    "at": "2026-06-16T14:40:11.444393+00:00",
+    "fingerprint": "sha256:c1f94a6b4030fc2798d650dc0d0e196a1e48783df98497664cc2179efe5472fb",
+    "result": "pass",
+    "tier": "cheap",
+    "waiver": null
+  },
   "fingerprint-ignores-artifacts": {
-    "at": "2026-06-16T14:34:27.286802+00:00",
+    "at": "2026-06-16T14:40:11.444393+00:00",
     "fingerprint": "sha256:2b537cc519952515c2d449226fb96d8a93b567b387f29bf3879585f39e5e59fe",
     "result": "pass",
     "tier": "cheap",
     "waiver": null
   },
   "gate-blocks-unproven": {
-    "at": "2026-06-16T14:34:27.286802+00:00",
+    "at": "2026-06-16T14:40:11.444393+00:00",
     "fingerprint": "sha256:91296c4a8319cb68097cc82014b3c9eb0ad4e6b885678b543c2a719034cdd451",
     "result": "pass",
     "tier": "cheap",
     "waiver": null
   },
+  "gate-fails-open-on-bad-input": {
+    "at": "2026-06-16T14:40:11.444393+00:00",
+    "fingerprint": "sha256:0bf6b6a7aba080f7219cb33361c43004dfe29bc7cc66e6f93dc192f0c2982b1e",
+    "result": "pass",
+    "tier": "cheap",
+    "waiver": null
+  },
   "gate-noop-without-manifest": {
-    "at": "2026-06-16T14:34:27.286802+00:00",
+    "at": "2026-06-16T14:40:11.444393+00:00",
     "fingerprint": "sha256:2396bfab06d4ad842bf62d24ceae2c7dc66eb27fdd07c9288b009535a263abe4",
     "result": "pass",
     "tier": "cheap",
     "waiver": null
   },
   "gate-self-clears": {
-    "at": "2026-06-16T14:34:27.286802+00:00",
+    "at": "2026-06-16T14:40:11.444393+00:00",
     "fingerprint": "sha256:61fba0bbba082f695457585449f319df05873c9b4840d535e2f23d1364dbd6ab",
     "result": "pass",
     "tier": "cheap",
     "waiver": null
   },
+  "install-hook-idempotent": {
+    "at": "2026-06-16T14:40:11.444393+00:00",
+    "fingerprint": "sha256:5bc7cba8230cd335aaccefcd7a2d1ea660b5fc52b4ff2629874a44bd80e08156",
+    "result": "pass",
+    "tier": "cheap",
+    "waiver": null
+  },
+  "ledger-round-trips": {
+    "at": "2026-06-16T14:40:11.444393+00:00",
+    "fingerprint": "sha256:4bdf77904130a06365d0d89acfbde3e422bc010847b055d2d093ad0a55fd8319",
+    "result": "pass",
+    "tier": "cheap",
+    "waiver": null
+  },
   "live-expiry-doesnt-block": {
-    "at": "2026-06-16T14:34:27.286802+00:00",
+    "at": "2026-06-16T14:40:11.444393+00:00",
     "fingerprint": "sha256:6ba08363a1186933e719b18e731bac0dbb37d46215337a843e77c88a42f28bcd",
     "result": "pass",
     "tier": "cheap",
     "waiver": null
   },
+  "manifest-rejects-bad-tier": {
+    "at": "2026-06-16T14:40:11.444393+00:00",
+    "fingerprint": "sha256:d4dcf307e2018f1d1f1627cfd61d426d2aed1436b189bc5784e86fde138ad5ed",
+    "result": "pass",
+    "tier": "cheap",
+    "waiver": null
+  },
+  "manifest-rejects-duplicate-ids": {
+    "at": "2026-06-16T14:40:11.444393+00:00",
+    "fingerprint": "sha256:d4dcf307e2018f1d1f1627cfd61d426d2aed1436b189bc5784e86fde138ad5ed",
+    "result": "pass",
+    "tier": "cheap",
+    "waiver": null
+  },
+  "runner-exit3-is-error": {
+    "at": "2026-06-16T14:40:11.444393+00:00",
+    "fingerprint": "sha256:684127d556e4cd3365f856e6c347af90832539766c2e8a999fd40490dafb039b",
+    "result": "pass",
+    "tier": "cheap",
+    "waiver": null
+  },
   "swallowed-exception-scan": {
-    "at": "2026-06-16T14:34:27.286802+00:00",
+    "at": "2026-06-16T14:40:11.444393+00:00",
     "fingerprint": "sha256:fb7084ed9af94c6258d3861c9b8ba0aeebb1a9806da7952913e7ecd9de32e7db",
     "result": "pass",
     "tier": "cheap",
     "waiver": null
   },
   "tests-green": {
-    "at": "2026-06-16T14:34:27.286802+00:00",
+    "at": "2026-06-16T14:40:11.444393+00:00",
     "fingerprint": "sha256:614c55566d56d42e923bdb9289286467e6ecd57355c9723b11fdeaeb8bdf1319",
     "result": "pass",
     "tier": "cheap",
     "waiver": null
   },
+  "verify-fails-nonzero": {
+    "at": "2026-06-16T14:40:11.444393+00:00",
+    "fingerprint": "sha256:d69c471d2d77fd2cf77c2bed712287f211d35bb97a346c18491fc1d2351a405f",
+    "result": "pass",
+    "tier": "cheap",
+    "waiver": null
+  },
   "verify-flags-empty-output": {
-    "at": "2026-06-16T14:34:27.286802+00:00",
+    "at": "2026-06-16T14:40:11.444393+00:00",
     "fingerprint": "sha256:adadcf682b7f1193b41b82af2e6841173d352e73244b65bfc4bdf9e4c363d8ff",
     "result": "pass",
     "tier": "cheap",
