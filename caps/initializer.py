@@ -164,8 +164,8 @@ def vendor_framework(
     target: Union[str, Path], kit: Union[str, Path], force: bool
 ) -> list[StepResult]:
     target, kit = Path(target), Path(kit)
-    if target.resolve() == kit.resolve():
-        raise ValueError("init target is the kit itself; refusing to vendor onto the source")
+    if force and target.resolve() == kit.resolve():
+        raise ValueError("init --force target is the kit itself; refusing to overwrite the source")
     results: list[StepResult] = []
     for name in FRAMEWORK_DIRS:
         src = kit / name

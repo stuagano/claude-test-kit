@@ -56,6 +56,18 @@ def test_vendor_refuses_to_target_the_kit_itself(tmp_path):
 
 
 @pytest.mark.unit
+def test_vendor_allows_self_target_without_force(tmp_path):
+    kit = tmp_path / "kit"
+    (kit / "ctk").mkdir(parents=True)
+    (kit / "ctk" / "mod.py").write_text("x = 1\n")
+    (kit / "caps").mkdir(); (kit / "caps" / "mod.py").write_text("c = 1\n")
+    (kit / "bin").mkdir(); (kit / "bin" / "g.sh").write_text("echo\n")
+    # Re-running init from inside an installed project must NOT raise; it skips.
+    results = initializer.vendor_framework(kit, kit, force=False)
+    assert all(r.action == "skipped" for r in results)
+
+
+@pytest.mark.unit
 def test_ensure_conftest_copies_when_absent(tmp_path):
     kit = tmp_path / "kit"
     kit.mkdir()
