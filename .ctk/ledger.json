@@ -1,28 +1,84 @@
 {
   "add-cannot-fake-a-pass": {
-    "at": "2026-06-16T14:17:26.449760+00:00",
+    "at": "2026-06-16T14:34:27.286802+00:00",
     "fingerprint": "sha256:1ec8a12089bf90b325203053cea11a648afae84eaa2c223292e748582bba06f4",
     "result": "pass",
     "tier": "cheap",
     "waiver": null
   },
+  "add-validates-before-write": {
+    "at": "2026-06-16T14:34:27.286802+00:00",
+    "fingerprint": "sha256:024f059de625f49e2af26d5109c2d1ec8e3de9772f0061f42a93c5314ebf13a4",
+    "result": "pass",
+    "tier": "cheap",
+    "waiver": null
+  },
+  "claim-vs-reality-trips": {
+    "at": "2026-06-16T14:34:27.286802+00:00",
+    "fingerprint": "sha256:adadcf682b7f1193b41b82af2e6841173d352e73244b65bfc4bdf9e4c363d8ff",
+    "result": "pass",
+    "tier": "cheap",
+    "waiver": null
+  },
+  "error-log-guard-fails-test": {
+    "at": "2026-06-16T14:34:27.286802+00:00",
+    "fingerprint": "sha256:86d35296ad8f4a35607cf551c03112ccd59f85a0d9e4a952724514b6a9363c09",
+    "result": "pass",
+    "tier": "cheap",
+    "waiver": null
+  },
+  "fingerprint-ignores-artifacts": {
+    "at": "2026-06-16T14:34:27.286802+00:00",
+    "fingerprint": "sha256:2b537cc519952515c2d449226fb96d8a93b567b387f29bf3879585f39e5e59fe",
+    "result": "pass",
+    "tier": "cheap",
+    "waiver": null
+  },
   "gate-blocks-unproven": {
-    "at": "2026-06-15T21:08:59.946136+00:00",
+    "at": "2026-06-16T14:34:27.286802+00:00",
     "fingerprint": "sha256:91296c4a8319cb68097cc82014b3c9eb0ad4e6b885678b543c2a719034cdd451",
     "result": "pass",
     "tier": "cheap",
     "waiver": null
   },
   "gate-noop-without-manifest": {
-    "at": "2026-06-16T14:17:27.480184+00:00",
+    "at": "2026-06-16T14:34:27.286802+00:00",
     "fingerprint": "sha256:2396bfab06d4ad842bf62d24ceae2c7dc66eb27fdd07c9288b009535a263abe4",
     "result": "pass",
     "tier": "cheap",
     "waiver": null
   },
+  "gate-self-clears": {
+    "at": "2026-06-16T14:34:27.286802+00:00",
+    "fingerprint": "sha256:61fba0bbba082f695457585449f319df05873c9b4840d535e2f23d1364dbd6ab",
+    "result": "pass",
+    "tier": "cheap",
+    "waiver": null
+  },
+  "live-expiry-doesnt-block": {
+    "at": "2026-06-16T14:34:27.286802+00:00",
+    "fingerprint": "sha256:6ba08363a1186933e719b18e731bac0dbb37d46215337a843e77c88a42f28bcd",
+    "result": "pass",
+    "tier": "cheap",
+    "waiver": null
+  },
+  "swallowed-exception-scan": {
+    "at": "2026-06-16T14:34:27.286802+00:00",
+    "fingerprint": "sha256:fb7084ed9af94c6258d3861c9b8ba0aeebb1a9806da7952913e7ecd9de32e7db",
+    "result": "pass",
+    "tier": "cheap",
+    "waiver": null
+  },
   "tests-green": {
-    "at": "2026-06-16T13:06:38.243360+00:00",
+    "at": "2026-06-16T14:34:27.286802+00:00",
     "fingerprint": "sha256:614c55566d56d42e923bdb9289286467e6ecd57355c9723b11fdeaeb8bdf1319",
+    "result": "pass",
+    "tier": "cheap",
+    "waiver": null
+  },
+  "verify-flags-empty-output": {
+    "at": "2026-06-16T14:34:27.286802+00:00",
+    "fingerprint": "sha256:adadcf682b7f1193b41b82af2e6841173d352e73244b65bfc4bdf9e4c363d8ff",
     "result": "pass",
     "tier": "cheap",
     "waiver": null

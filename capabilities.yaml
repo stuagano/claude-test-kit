@@ -39,3 +39,77 @@ capabilities:
     deps:
     - bin/caps-stop-gate.sh
     check: tests/integration/test_caps_wrapper.py::test_short_circuits_without_manifest
+  - id: claim-vs-reality-trips
+    description: claim_vs_reality raises when success is claimed but reality disagrees
+    given: a step that reports success but produced wrong/empty output
+    when: claim_vs_reality reconciles the claim against an independent verifier
+    then: it raises a SILENT FAILURE rather than passing
+    tier: cheap
+    deps:
+    - ctk/verify.py
+    check: tests/unit/test_ctk_unit.py::test_claim_vs_reality_flags_silent_failure
+  - id: verify-flags-empty-output
+    description: verify(Artifact) catches a file that exists but is empty / too small
+    given: a tool that exits 0 and leaves an empty output file
+    when: verify checks the real artifact's size/content
+    then: it fails instead of trusting the exit code
+    tier: cheap
+    deps:
+    - ctk/verify.py
+    check: tests/unit/test_ctk_unit.py::test_verify_flags_empty_file
+  - id: swallowed-exception-scan
+    description: find_swallowed_exceptions detects except/pass and log-and-swallow blocks
+    given: source containing a swallowed exception
+    when: the AST scanner runs over the tree
+    then: it reports the swallowed exception
+    tier: cheap
+    deps:
+    - ctk/lint.py
+    check: tests/unit/test_ctk_unit.py::test_lint_flags_swallowed
+  - id: error-log-guard-fails-test
+    description: the autouse guard fails any test whose code logged at ERROR/CRITICAL
+    given: code that catches an exception but logs it at ERROR
+    when: the test finishes without raising
+    then: the fail_on_error_log fixture still fails the test
+    tier: cheap
+    deps:
+    - conftest.py
+    check: tests/unit/test_error_log_guard.py::test_guard_captures_error_logs
+  - id: fingerprint-ignores-artifacts
+    description: fingerprint excludes __pycache__/.pyc so capabilities don't go stale
+      on import
+    given: a dep glob that also matches build artifacts
+    when: the fingerprint is computed
+    then: recompiled .pyc files never change it; real source changes do
+    tier: cheap
+    deps:
+    - caps/fingerprint.py
+    check: tests/unit/test_caps_fingerprint.py::test_ignores_pycache_and_pyc
+  - id: add-validates-before-write
+    description: 'caps add never corrupts the manifest: bad appends leave it untouched'
+    given: an append that would produce an invalid manifest
+    when: caps add validates the candidate in memory first
+    then: the on-disk manifest is unchanged and the command errors
+    tier: cheap
+    deps:
+    - caps/manifest_edit.py
+    check: tests/unit/test_caps_manifest_edit.py::test_non_block_style_rejected_and_file_unchanged
+  - id: gate-self-clears
+    description: the Stop-hook gate blocks at most once, then allows the turn to finish
+    given: a turn that was just blocked by the gate
+    when: the re-stop arrives with stop_hook_active true
+    then: the gate allows it (no infinite block loop)
+    tier: cheap
+    deps:
+    - caps/gate.py
+    check: tests/unit/test_caps_gate.py::test_stop_hook_active_allows
+  - id: live-expiry-doesnt-block
+    description: time-expiry of a live capability is a note, not a block (upholds Phase
+      1)
+    given: a live capability whose freshness window has passed with no code change
+    when: the gate decides at end of a turn
+    then: it does not block; it surfaces a non-blocking note
+    tier: cheap
+    deps:
+    - caps/state.py
+    check: tests/unit/test_caps_gate.py::test_time_expired_does_not_block_but_notes

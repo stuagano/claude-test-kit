@@ -14,3 +14,6 @@ htmlcov/
 
 # macOS
 .DS_Store
+
+# caps/hookinstall backups (git is the source of truth)
+*.bak.*
