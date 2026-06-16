@@ -20,3 +20,22 @@ capabilities:
     tier: cheap
     deps: ["caps/gate.py", "caps/state.py", "caps/project.py"]
     check: tests/unit/test_caps_gate.py::test_never_proven_blocks
+  - id: add-cannot-fake-a-pass
+    description: caps add creates a never-proven capability with a failing stub
+    given: a newly proposed capability
+    when: caps add runs and you verify before implementing the check
+    then: the capability is red (fail) until a real check is written
+    tier: cheap
+    deps:
+    - caps/manifest_edit.py
+    check: tests/integration/test_caps_add_cli.py::test_add_then_verify_is_red_then_green
+  - id: gate-noop-without-manifest
+    description: the Stop-hook wrapper does nothing (and never launches Python) when
+      a project has no capabilities.yaml
+    given: a directory with no capabilities.yaml
+    when: the Stop-hook gate runs at end of a turn
+    then: it exits 0 with no output and without starting Python
+    tier: cheap
+    deps:
+    - bin/caps-stop-gate.sh
+    check: tests/integration/test_caps_wrapper.py::test_short_circuits_without_manifest

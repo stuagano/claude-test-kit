@@ -1,7 +1,21 @@
 {
+  "add-cannot-fake-a-pass": {
+    "at": "2026-06-16T14:17:26.449760+00:00",
+    "fingerprint": "sha256:1ec8a12089bf90b325203053cea11a648afae84eaa2c223292e748582bba06f4",
+    "result": "pass",
+    "tier": "cheap",
+    "waiver": null
+  },
   "gate-blocks-unproven": {
     "at": "2026-06-15T21:08:59.946136+00:00",
     "fingerprint": "sha256:91296c4a8319cb68097cc82014b3c9eb0ad4e6b885678b543c2a719034cdd451",
+    "result": "pass",
+    "tier": "cheap",
+    "waiver": null
+  },
+  "gate-noop-without-manifest": {
+    "at": "2026-06-16T14:17:27.480184+00:00",
+    "fingerprint": "sha256:2396bfab06d4ad842bf62d24ceae2c7dc66eb27fdd07c9288b009535a263abe4",
     "result": "pass",
     "tier": "cheap",
     "waiver": null
