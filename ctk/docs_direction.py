@@ -74,6 +74,24 @@ def _claude_cli_runner(prompt: str) -> str:
     return proc.stdout
 
 
+def _quote_present(quote: str, haystacks: Sequence[str]) -> bool:
+    q = " ".join(quote.split())
+    return any(q and " ".join(h.split()).find(q) != -1 for h in haystacks)
+
+
+def _verify_evidence(v: DirectionVerdict, doc_text: str, context: str) -> DirectionVerdict:
+    if v.verdict != "overtaken":
+        return v
+    doc_ok = v.doc_evidence and all(_quote_present(q, [doc_text]) for q in v.doc_evidence)
+    src_ok = v.source_evidence and all(_quote_present(q, [context]) for q in v.source_evidence)
+    if doc_ok and src_ok:
+        return v
+    return DirectionVerdict(
+        v.doc, "uncertain",
+        f"overtaken claim discarded — evidence not verifiable ({v.rationale})",
+        v.doc_evidence, v.source_evidence)
+
+
 def _parse_verdict(doc: str, raw: str) -> DirectionVerdict:
     m = re.search(r"\{.*\}", raw, re.DOTALL)
     if not m:
@@ -107,7 +125,8 @@ def review_doc_direction(
         with open(os.path.join(repo_root, doc), "r", errors="replace") as f:
             doc_text = f.read()
         raw = runner(_build_prompt(doc, doc_text, context))
-        verdicts.append(_parse_verdict(doc, raw))
+        verdict = _parse_verdict(doc, raw)
+        verdicts.append(_verify_evidence(verdict, doc_text, context))
     return verdicts
 
 
