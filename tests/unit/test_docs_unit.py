@@ -119,3 +119,20 @@ def test_superseded_via_newer_same_slug(workspace):
     superseded = [f.doc for f in findings if f.kind == "superseded"]
     assert "docs/specs/2026-01-01-thing-design.md" in superseded
     assert "docs/specs/2026-02-01-thing-design.md" not in superseded
+
+
+def test_assertion_requires_paths_fails_when_missing(workspace):
+    workspace.write("docs/a.md", "---\nctk:\n  requires_paths: [caps/gone.py]\n---\n# A\n")
+    findings = find_stale_docs(doc_roots=("docs/",), repo_root=str(workspace.root))
+    assert ("assertion_failed", "error") in [(f.kind, f.severity) for f in findings]
+
+
+def test_assertion_requires_grep_pass_and_fail(workspace):
+    workspace.write("caps/freshness.py", "WINDOW_HOURS = 24\n")
+    workspace.write("docs/ok.md",
+        "---\nctk:\n  requires_grep:\n    - {file: caps/freshness.py, pattern: '24'}\n---\n# ok\n")
+    workspace.write("docs/bad.md",
+        "---\nctk:\n  requires_grep:\n    - {file: caps/freshness.py, pattern: '99'}\n---\n# bad\n")
+    findings = find_stale_docs(doc_roots=("docs/",), repo_root=str(workspace.root))
+    bad = [f for f in findings if f.kind == "assertion_failed"]
+    assert len(bad) == 1 and bad[0].doc == "docs/bad.md"

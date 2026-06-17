@@ -212,6 +212,32 @@ def _front_matter(text: str) -> tuple[dict, int]:
     return data, block.count("\n") + 2
 
 
+def _detect_assertions(doc: str, text: str, repo_root: str, config: DocsConfig) -> list[Finding]:
+    out: list[Finding] = []
+    sev = _severity("assertion_failed", config, SEVERITY_ERROR)
+    fm, _ = _front_matter(text)
+    ctk_block = fm.get("ctk") or {}
+    if not isinstance(ctk_block, dict):
+        return out
+    for p in ctk_block.get("requires_paths", []) or []:
+        if not os.path.exists(os.path.join(repo_root, str(p))):
+            out.append(Finding(doc, 1, "assertion_failed", sev,
+                               "requires_paths target does not exist", str(p)))
+    for entry in ctk_block.get("requires_grep", []) or []:
+        f_path = str(entry.get("file", ""))
+        pattern = str(entry.get("pattern", ""))
+        abs_p = os.path.join(repo_root, f_path)
+        if not os.path.exists(abs_p):
+            out.append(Finding(doc, 1, "assertion_failed", sev,
+                               "requires_grep file does not exist", f_path))
+            continue
+        with open(abs_p, "r", errors="replace") as fh:
+            if not re.search(pattern, fh.read()):
+                out.append(Finding(doc, 1, "assertion_failed", sev,
+                                   f"requires_grep pattern not found: {pattern}", f_path))
+    return out
+
+
 def _detect_superseded(docs: list[str], texts: dict[str, str],
                        repo_root: str, config: DocsConfig) -> list[Finding]:
     out: list[Finding] = []
@@ -285,6 +311,7 @@ def find_stale_docs(
     for doc, text in texts.items():
         findings.extend(_detect_broken_refs(doc, text, repo_root, config))
         findings.extend(_detect_dead_links(doc, text, repo_root, config))
+        findings.extend(_detect_assertions(doc, text, repo_root, config))
     findings.extend(_detect_orphans(list(texts), texts, repo_root, config))
     findings.extend(_detect_superseded(list(texts), texts, repo_root, config))
     return findings
