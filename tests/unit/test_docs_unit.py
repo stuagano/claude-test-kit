@@ -77,3 +77,23 @@ def test_dead_link_unreadable_target_is_a_finding(workspace, monkeypatch):
         doc_roots=("README.md", "docs/"), repo_root=str(workspace.root))
     assert any(f.kind == "dead_link" and "could not read" in f.message
                for f in findings)
+
+
+def test_orphan_flags_unlinked_doc(workspace):
+    workspace.write("README.md", "Start. [guide](docs/guide.md)\n")
+    workspace.write("docs/guide.md", "# Guide\n")
+    workspace.write("docs/lonely.md", "# Nobody links here\n")
+    findings = find_stale_docs(
+        doc_roots=("README.md", "docs/"), repo_root=str(workspace.root))
+    orphans = [f.doc for f in findings if f.kind == "orphan"]
+    assert "docs/lonely.md" in orphans
+    assert "docs/guide.md" not in orphans
+    assert "README.md" not in orphans
+
+
+def test_orphan_exempts_archival_tree(workspace):
+    workspace.write("README.md", "# Root\n")
+    workspace.write("docs/superpowers/specs/old.md", "# archived\n")
+    findings = find_stale_docs(
+        doc_roots=("README.md", "docs/"), repo_root=str(workspace.root))
+    assert [f for f in findings if f.kind == "orphan"] == []

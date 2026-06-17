@@ -148,6 +148,46 @@ def _detect_dead_links(doc: str, text: str, repo_root: str, config: DocsConfig) 
     return out
 
 
+def _outgoing_doc_links(doc: str, text: str, repo_root: str) -> list[str]:
+    doc_dir = os.path.dirname(doc)
+    out: list[str] = []
+    for m in _MD_LINK.finditer(text):
+        target = m.group(1).strip()
+        if not _is_relative_repo_target(target):
+            continue
+        file_part = target.partition("#")[0]
+        if not file_part.endswith(".md"):
+            continue
+        rel = os.path.normpath(os.path.join(doc_dir, file_part))
+        if os.path.exists(os.path.join(repo_root, rel)):
+            out.append(rel)
+    return out
+
+
+def _detect_orphans(docs: list[str], texts: dict[str, str],
+                    repo_root: str, config: DocsConfig) -> list[Finding]:
+    reachable: set[str] = set()
+    frontier = [os.path.normpath(e) for e in config.entrypoints
+                if os.path.exists(os.path.join(repo_root, e))]
+    reachable.update(frontier)
+    while frontier:
+        cur = frontier.pop()
+        for nxt in _outgoing_doc_links(cur, texts.get(cur, ""), repo_root):
+            if nxt not in reachable:
+                reachable.add(nxt)
+                frontier.append(nxt)
+    out: list[Finding] = []
+    exempt = tuple(config.orphan_exempt)
+    entry = {os.path.normpath(e) for e in config.entrypoints}
+    for doc in docs:
+        if doc in reachable or doc in entry or doc.startswith(exempt):
+            continue
+        out.append(Finding(doc, None, "orphan",
+                           _severity("orphan", config, SEVERITY_WARN),
+                           "doc is not reachable from any entrypoint", doc))
+    return out
+
+
 def _iter_docs(doc_roots: Sequence[str], repo_root: str) -> list[str]:
     """Return repo-relative paths of all .md docs under the given roots."""
     out: list[str] = []
@@ -174,16 +214,18 @@ def find_stale_docs(
     config = config or DocsConfig(doc_roots=doc_roots)
     findings: list[Finding] = []
     docs = _iter_docs(doc_roots, repo_root)
+    texts: dict[str, str] = {}
     for doc in docs:
         try:
             with open(os.path.join(repo_root, doc), "r", errors="strict") as f:
-                text = f.read()
+                texts[doc] = f.read()
         except (OSError, UnicodeDecodeError) as e:
             findings.append(Finding(doc, None, "broken_ref",
                                     SEVERITY_ERROR, f"could not read doc: {e}", doc))
-            continue
+    for doc, text in texts.items():
         findings.extend(_detect_broken_refs(doc, text, repo_root, config))
         findings.extend(_detect_dead_links(doc, text, repo_root, config))
+    findings.extend(_detect_orphans(list(texts), texts, repo_root, config))
     return findings
 
 
