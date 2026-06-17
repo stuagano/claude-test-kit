@@ -97,3 +97,25 @@ def test_orphan_exempts_archival_tree(workspace):
     findings = find_stale_docs(
         doc_roots=("README.md", "docs/"), repo_root=str(workspace.root))
     assert [f for f in findings if f.kind == "orphan"] == []
+
+
+def test_superseded_via_front_matter(workspace):
+    workspace.write("docs/a.md", "---\nsuperseded_by: docs/b.md\n---\n# A\n")
+    findings = find_stale_docs(doc_roots=("docs/",), repo_root=str(workspace.root))
+    assert ("superseded", "warn") in [(f.kind, f.severity) for f in findings]
+
+
+def test_superseded_via_prose(workspace):
+    workspace.write("docs/b.md", "# B\n")
+    workspace.write("docs/a.md", "# A\n\nThis is superseded by [B](b.md).\n")
+    findings = find_stale_docs(doc_roots=("docs/",), repo_root=str(workspace.root))
+    assert any(f.kind == "superseded" and f.doc == "docs/a.md" for f in findings)
+
+
+def test_superseded_via_newer_same_slug(workspace):
+    workspace.write("docs/specs/2026-01-01-thing-design.md", "# old\n")
+    workspace.write("docs/specs/2026-02-01-thing-design.md", "# new\n")
+    findings = find_stale_docs(doc_roots=("docs/",), repo_root=str(workspace.root))
+    superseded = [f.doc for f in findings if f.kind == "superseded"]
+    assert "docs/specs/2026-01-01-thing-design.md" in superseded
+    assert "docs/specs/2026-02-01-thing-design.md" not in superseded

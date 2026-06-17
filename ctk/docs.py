@@ -21,6 +21,9 @@ SEVERITY_WARN = "warn"
 _CODE_SPAN = re.compile(r"`([^`]+)`")
 _PLACEHOLDER = re.compile(r"(path/to/|/\.\.\.|<[^>]+>|\bexample/|\bfoo/|\bbar/|\$\{)")
 _MD_LINK = re.compile(r"\[[^\]]*\]\(([^)]+)\)")
+_SPEC_SLUG = re.compile(r"(\d{4}-\d{2}-\d{2})-(.+?)(?:-design|-discovery)?\.md$")
+_SUPERSEDE_PROSE = re.compile(
+    r"(superseded|replaced|deprecated)\s+by\s+\[[^\]]*\]\(([^)]+)\)", re.IGNORECASE)
 
 
 @dataclass
@@ -188,6 +191,63 @@ def _detect_orphans(docs: list[str], texts: dict[str, str],
     return out
 
 
+def _front_matter(text: str) -> tuple[dict, int]:
+    """Return (front_matter_dict, lines_consumed). Empty dict if none.
+
+    Raises ValueError on malformed YAML so the caller can record an error
+    Finding rather than swallowing it.
+    """
+    if not text.startswith("---\n"):
+        return {}, 0
+    end = text.find("\n---", 4)
+    if end == -1:
+        return {}, 0
+    block = text[4:end]
+    import yaml
+    data = yaml.safe_load(block)
+    if data is None:
+        data = {}
+    if not isinstance(data, dict):
+        raise ValueError("front matter is not a mapping")
+    return data, block.count("\n") + 2
+
+
+def _detect_superseded(docs: list[str], texts: dict[str, str],
+                       repo_root: str, config: DocsConfig) -> list[Finding]:
+    out: list[Finding] = []
+    sev = _severity("superseded", config, SEVERITY_WARN)
+    # newest date per spec slug
+    latest: dict[str, str] = {}
+    for doc in docs:
+        m = _SPEC_SLUG.search(os.path.basename(doc))
+        if m:
+            date, slug = m.group(1), m.group(2)
+            if slug not in latest or date > latest[slug]:
+                latest[slug] = date
+    for doc, text in texts.items():
+        fm, _ = _front_matter(text)
+        if "superseded_by" in fm:
+            out.append(Finding(doc, 1, "superseded", sev,
+                               "front-matter declares superseded_by",
+                               str(fm["superseded_by"])))
+            continue
+        pm = _SUPERSEDE_PROSE.search(text)
+        if pm:
+            doc_dir = os.path.dirname(doc)
+            tgt = os.path.normpath(os.path.join(doc_dir, pm.group(2).partition("#")[0]))
+            if os.path.exists(os.path.join(repo_root, tgt)):
+                out.append(Finding(doc, None, "superseded", sev,
+                                   "prose says superseded/replaced/deprecated by",
+                                   pm.group(2)))
+                continue
+        m = _SPEC_SLUG.search(os.path.basename(doc))
+        if m and m.group(1) < latest.get(m.group(2), m.group(1)):
+            out.append(Finding(doc, None, "superseded", sev,
+                               "a newer doc shares this spec slug",
+                               f"newer: {latest[m.group(2)]}"))
+    return out
+
+
 def _iter_docs(doc_roots: Sequence[str], repo_root: str) -> list[str]:
     """Return repo-relative paths of all .md docs under the given roots."""
     out: list[str] = []
@@ -226,6 +286,7 @@ def find_stale_docs(
         findings.extend(_detect_broken_refs(doc, text, repo_root, config))
         findings.extend(_detect_dead_links(doc, text, repo_root, config))
     findings.extend(_detect_orphans(list(texts), texts, repo_root, config))
+    findings.extend(_detect_superseded(list(texts), texts, repo_root, config))
     return findings
 
 
