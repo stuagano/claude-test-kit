@@ -17,3 +17,7 @@ htmlcov/
 
 # caps/hookinstall backups (git is the source of truth)
 *.bak.*
+
+# Local-only Claude project notes (personal workflow/account details)
+CLAUDE.md
+.claude/
