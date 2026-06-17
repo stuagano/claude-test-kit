@@ -11,11 +11,15 @@ Detectors: broken_ref, dead_link, orphan, superseded, assertion_failed.
 from __future__ import annotations
 
 import os
+import re
 from dataclasses import dataclass, field
 from typing import Optional, Sequence
 
 SEVERITY_ERROR = "error"
 SEVERITY_WARN = "warn"
+
+_CODE_SPAN = re.compile(r"`([^`]+)`")
+_PLACEHOLDER = re.compile(r"(path/to/|/\.\.\.|<[^>]+>|\bexample/|\bfoo/|\bbar/|\$\{)")
 
 
 @dataclass
@@ -59,6 +63,38 @@ def _severity(kind: str, config: DocsConfig, default: str) -> str:
     return config.severity_overrides.get(kind, default)
 
 
+def _looks_like_repo_path(tok: str, config: DocsConfig) -> bool:
+    tok = tok.strip()
+    if not tok or tok.startswith(("http://", "https://", "#", "mailto:", "/")):
+        return False
+    if _PLACEHOLDER.search(tok):
+        return False
+    if any(re.search(p, tok) for p in config.ignore):
+        return False
+    if tok.startswith(tuple(config.known_top_dirs)):
+        return True
+    if "/" in tok and tok.endswith(tuple(config.tracked_ext)):
+        return True
+    return False
+
+
+def _exists(rel_path: str, repo_root: str) -> bool:
+    rel_path = rel_path.split("#", 1)[0].strip()
+    return bool(rel_path) and os.path.exists(os.path.join(repo_root, rel_path))
+
+
+def _detect_broken_refs(doc: str, text: str, repo_root: str, config: DocsConfig) -> list[Finding]:
+    out: list[Finding] = []
+    for i, line in enumerate(text.splitlines(), start=1):
+        for m in _CODE_SPAN.finditer(line):
+            tok = m.group(1)
+            if _looks_like_repo_path(tok, config) and not _exists(tok, repo_root):
+                out.append(Finding(doc, i, "broken_ref",
+                                   _severity("broken_ref", config, SEVERITY_ERROR),
+                                   "code-span path does not exist", tok))
+    return out
+
+
 def _iter_docs(doc_roots: Sequence[str], repo_root: str) -> list[str]:
     """Return repo-relative paths of all .md docs under the given roots."""
     out: list[str] = []
@@ -85,7 +121,15 @@ def find_stale_docs(
     config = config or DocsConfig(doc_roots=doc_roots)
     findings: list[Finding] = []
     docs = _iter_docs(doc_roots, repo_root)
-    # detectors are added in later tasks
+    for doc in docs:
+        try:
+            with open(os.path.join(repo_root, doc), "r", errors="strict") as f:
+                text = f.read()
+        except (OSError, UnicodeDecodeError) as e:
+            findings.append(Finding(doc, None, "broken_ref",
+                                    SEVERITY_ERROR, f"could not read doc: {e}", doc))
+            continue
+        findings.extend(_detect_broken_refs(doc, text, repo_root, config))
     return findings
 
 
