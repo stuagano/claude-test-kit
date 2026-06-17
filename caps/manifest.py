@@ -49,7 +49,11 @@ def load_manifest(path: Union[str, Path]) -> list[Capability]:
     except yaml.YAMLError as e:
         raise ManifestError(f"could not parse {path}: {e}") from e
 
-    entries = doc.get("capabilities")
+    if "capabilities" not in doc:
+        raise ManifestError("manifest must have a top-level 'capabilities:' list")
+    entries = doc["capabilities"]
+    if entries is None:
+        entries = []  # `capabilities:` with no items (e.g. a freshly-init'd manifest) = zero
     if not isinstance(entries, list):
         raise ManifestError("manifest must have a top-level 'capabilities:' list")
 

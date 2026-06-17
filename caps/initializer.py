@@ -124,17 +124,16 @@ _STARTER_MANIFEST = """\
 #                 --description "..." --given "..." --when "..." --then "..." \\
 #                 --deps <glob> --check checks/test_<id>.py::test_<id>
 #
-# Example (delete and run `caps add` instead of hand-editing):
-#   capabilities:
-#     - id: writes-to-db
-#       description: rows written by the ingest job read back with matching ids
-#       given: a reachable database
-#       when: the ingest job runs
-#       then: the written rows are readable back
-#       tier: live
-#       deps: [ingest.py]
-#       check: checks/test_db_write.py::test_write_readback
-capabilities: []
+# Example entry (run `caps add ...` to append one — don't hand-edit):
+#   - id: writes-to-db
+#     description: rows written by the ingest job read back with matching ids
+#     given: a reachable database
+#     when: the ingest job runs
+#     then: the written rows are readable back
+#     tier: live
+#     deps: [ingest.py]
+#     check: checks/test_db_write.py::test_write_readback
+capabilities:
 """
 
 

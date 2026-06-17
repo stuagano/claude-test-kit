@@ -49,6 +49,25 @@ def test_vendor_skips_existing_without_force_overwrites_with_force(tmp_path):
 
 
 @pytest.mark.unit
+def test_vendor_force_overwrites_existing_wrapper(tmp_path):
+    # --force with a pre-existing wrapper file: the wrapper is replaced and the
+    # result reports "overwritten" (covers the overwrite branch of _vendor_wrapper).
+    kit = tmp_path / "kit"
+    (kit / "ctk").mkdir(parents=True); (kit / "ctk" / "mod.py").write_text("x = 1\n")
+    (kit / "caps").mkdir(); (kit / "caps" / "mod.py").write_text("c = 1\n")
+    (kit / "bin").mkdir(); (kit / "bin" / "caps-stop-gate.sh").write_text("NEW\n")
+    target = tmp_path / "proj"
+    (target / "bin").mkdir(parents=True)
+    (target / "bin" / "caps-stop-gate.sh").write_text("OLD\n")  # pre-existing wrapper
+
+    results = initializer.vendor_framework(target, kit, force=True)
+
+    assert (target / "bin" / "caps-stop-gate.sh").read_text() == "NEW\n"
+    assert any(r.action == "overwritten" and r.target.endswith("caps-stop-gate.sh")
+               for r in results)
+
+
+@pytest.mark.unit
 def test_vendor_refuses_to_target_the_kit_itself(tmp_path):
     kit = tmp_path / "kit"
     (kit / "ctk").mkdir(parents=True)

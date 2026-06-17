@@ -42,3 +42,35 @@ def test_init_is_idempotent_and_repairs_deleted_config(tmp_path):
     assert again.returncode == 0, again.stdout + again.stderr
     assert (tmp_path / "pytest.ini").is_file()  # repaired
     assert "keep: me" in (tmp_path / "capabilities.yaml").read_text()
+
+
+@pytest.mark.integration
+def test_init_then_add_and_verify_self_contained(tmp_path):
+    # First install needs the kit reachable (the project is still empty).
+    assert _caps(["init"], tmp_path).returncode == 0
+
+    # A real check that imports the VENDORED ctk — its passing proves the project
+    # is self-contained (vendored framework importable via the written pytest.ini).
+    (tmp_path / "checks" / "test_demo.py").write_text(
+        "import ctk\n"
+        "def test_demo():\n"
+        "    assert hasattr(ctk, 'run')\n"
+    )
+
+    # From here, run with NO PYTHONPATH so ONLY the vendored framework is used —
+    # this is the "no PYTHONPATH gymnastics" the drop-in model promises.
+    def _vendored(args):
+        env = dict(os.environ)
+        env.pop("PYTHONPATH", None)
+        return ctk.run([sys.executable, "-m", "caps", *args], cwd=str(tmp_path), env=env)
+
+    add = _vendored([
+        "add", "--id", "demo", "--tier", "cheap",
+        "--description", "d", "--given", "g", "--when", "w", "--then", "t",
+        "--check", "checks/test_demo.py::test_demo",
+    ])
+    assert add.returncode == 0, add.stdout + add.stderr
+
+    verify = _vendored(["verify", "--capability", "demo"])
+    assert verify.returncode == 0, verify.stdout + verify.stderr
+    assert "demo: pass" in verify.stdout
