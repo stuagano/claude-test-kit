@@ -20,6 +20,7 @@ SEVERITY_WARN = "warn"
 
 _CODE_SPAN = re.compile(r"`([^`]+)`")
 _PLACEHOLDER = re.compile(r"(path/to/|/\.\.\.|<[^>]+>|\bexample/|\bfoo/|\bbar/|\$\{)")
+_MD_LINK = re.compile(r"\[[^\]]*\]\(([^)]+)\)")
 
 
 @dataclass
@@ -83,6 +84,31 @@ def _exists(rel_path: str, repo_root: str) -> bool:
     return bool(rel_path) and os.path.exists(os.path.join(repo_root, rel_path))
 
 
+def _slugify_heading(text: str) -> str:
+    s = text.strip().lower()
+    s = re.sub(r"[^\w\s-]", "", s)
+    return re.sub(r"\s+", "-", s)
+
+
+def _anchors_in(path: str, repo_root: str) -> set[str]:
+    out: set[str] = set()
+    try:
+        with open(os.path.join(repo_root, path), "r", errors="replace") as f:
+            for line in f:
+                m = re.match(r"#{1,6}\s+(.*)", line)
+                if m:
+                    out.add(_slugify_heading(m.group(1)))
+    except OSError:
+        pass
+    return out
+
+
+def _is_relative_repo_target(target: str) -> bool:
+    target = target.strip()
+    return bool(target) and not target.startswith(
+        ("http://", "https://", "mailto:", "#", "/"))
+
+
 def _detect_broken_refs(doc: str, text: str, repo_root: str, config: DocsConfig) -> list[Finding]:
     out: list[Finding] = []
     for i, line in enumerate(text.splitlines(), start=1):
@@ -92,6 +118,27 @@ def _detect_broken_refs(doc: str, text: str, repo_root: str, config: DocsConfig)
                 out.append(Finding(doc, i, "broken_ref",
                                    _severity("broken_ref", config, SEVERITY_ERROR),
                                    "code-span path does not exist", tok))
+    return out
+
+
+def _detect_dead_links(doc: str, text: str, repo_root: str, config: DocsConfig) -> list[Finding]:
+    out: list[Finding] = []
+    doc_dir = os.path.dirname(doc)
+    for i, line in enumerate(text.splitlines(), start=1):
+        for m in _MD_LINK.finditer(line):
+            target = m.group(1).strip()
+            if not _is_relative_repo_target(target):
+                continue
+            file_part, _, anchor = target.partition("#")
+            rel = os.path.normpath(os.path.join(doc_dir, file_part)) if file_part else doc
+            if not os.path.exists(os.path.join(repo_root, rel)):
+                out.append(Finding(doc, i, "dead_link",
+                                   _severity("dead_link", config, SEVERITY_ERROR),
+                                   "link target does not exist", target))
+            elif anchor and _slugify_heading(anchor) not in _anchors_in(rel, repo_root):
+                out.append(Finding(doc, i, "dead_link",
+                                   _severity("dead_link_anchor", config, SEVERITY_WARN),
+                                   "link anchor not found in target", target))
     return out
 
 
@@ -130,6 +177,7 @@ def find_stale_docs(
                                     SEVERITY_ERROR, f"could not read doc: {e}", doc))
             continue
         findings.extend(_detect_broken_refs(doc, text, repo_root, config))
+        findings.extend(_detect_dead_links(doc, text, repo_root, config))
     return findings
 
 

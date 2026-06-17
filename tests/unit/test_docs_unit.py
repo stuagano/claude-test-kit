@@ -37,3 +37,25 @@ def test_broken_ref_ignores_illustrative_paths(workspace):
     workspace.write("README.md", "e.g. `path/to/file.py` or `<your-kit>/x.py`.\n")
     findings = find_stale_docs(doc_roots=("README.md",), repo_root=str(workspace.root))
     assert [f for f in findings if f.kind == "broken_ref"] == []
+
+
+def test_dead_link_flags_missing_target(workspace):
+    workspace.write("README.md", "See [the guide](docs/missing.md).\n")
+    findings = find_stale_docs(doc_roots=("README.md",), repo_root=str(workspace.root))
+    assert ("dead_link", "error") in [(f.kind, f.severity) for f in findings]
+
+
+def test_dead_link_clean_for_existing_target(workspace):
+    workspace.write("docs/guide.md", "# Guide\n")
+    workspace.write("README.md", "See [guide](docs/guide.md).\n")
+    findings = find_stale_docs(
+        doc_roots=("README.md", "docs/"), repo_root=str(workspace.root))
+    assert [f for f in findings if f.kind == "dead_link"] == []
+
+
+def test_dead_link_warns_on_missing_anchor(workspace):
+    workspace.write("docs/guide.md", "# Guide\n\n## Setup\n")
+    workspace.write("README.md", "See [setup](docs/guide.md#nonexistent).\n")
+    findings = find_stale_docs(
+        doc_roots=("README.md", "docs/"), repo_root=str(workspace.root))
+    assert ("dead_link", "warn") in [(f.kind, f.severity) for f in findings]
