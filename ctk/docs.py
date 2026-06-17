@@ -92,14 +92,11 @@ def _slugify_heading(text: str) -> str:
 
 def _anchors_in(path: str, repo_root: str) -> set[str]:
     out: set[str] = set()
-    try:
-        with open(os.path.join(repo_root, path), "r", errors="replace") as f:
-            for line in f:
-                m = re.match(r"#{1,6}\s+(.*)", line)
-                if m:
-                    out.add(_slugify_heading(m.group(1)))
-    except OSError:
-        pass
+    with open(os.path.join(repo_root, path), "r", errors="replace") as f:
+        for line in f:
+            m = re.match(r"#{1,6}\s+(.*)", line)
+            if m:
+                out.add(_slugify_heading(m.group(1)))
     return out
 
 
@@ -135,10 +132,19 @@ def _detect_dead_links(doc: str, text: str, repo_root: str, config: DocsConfig) 
                 out.append(Finding(doc, i, "dead_link",
                                    _severity("dead_link", config, SEVERITY_ERROR),
                                    "link target does not exist", target))
-            elif anchor and _slugify_heading(anchor) not in _anchors_in(rel, repo_root):
-                out.append(Finding(doc, i, "dead_link",
-                                   _severity("dead_link_anchor", config, SEVERITY_WARN),
-                                   "link anchor not found in target", target))
+            elif anchor:
+                try:
+                    anchors = _anchors_in(rel, repo_root)
+                except OSError as e:
+                    out.append(Finding(doc, i, "dead_link",
+                                       _severity("dead_link", config, SEVERITY_ERROR),
+                                       f"could not read link target to verify anchor: {e}",
+                                       target))
+                    continue
+                if _slugify_heading(anchor) not in anchors:
+                    out.append(Finding(doc, i, "dead_link",
+                                       _severity("dead_link_anchor", config, SEVERITY_WARN),
+                                       "link anchor not found in target", target))
     return out
 
 

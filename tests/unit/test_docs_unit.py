@@ -59,3 +59,21 @@ def test_dead_link_warns_on_missing_anchor(workspace):
     findings = find_stale_docs(
         doc_roots=("README.md", "docs/"), repo_root=str(workspace.root))
     assert ("dead_link", "warn") in [(f.kind, f.severity) for f in findings]
+
+
+def test_dead_link_unreadable_target_is_a_finding(workspace, monkeypatch):
+    workspace.write("docs/guide.md", "# Guide\n\n## Setup\n")
+    workspace.write("README.md", "See [setup](docs/guide.md#setup).\n")
+    import ctk.docs as d
+    real_open = open
+
+    def boom(path, *a, **k):
+        if str(path).endswith("docs/guide.md"):
+            raise OSError("permission denied")
+        return real_open(path, *a, **k)
+
+    monkeypatch.setattr("builtins.open", boom)
+    findings = find_stale_docs(
+        doc_roots=("README.md", "docs/"), repo_root=str(workspace.root))
+    assert any(f.kind == "dead_link" and "could not read" in f.message
+               for f in findings)
