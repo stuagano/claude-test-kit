@@ -204,3 +204,14 @@ capabilities:
     deps:
     - caps/hookinstall.py
     check: tests/unit/test_caps_hookinstall.py::test_install_is_idempotent
+  - id: init-produces-working-project
+    description: caps init vendors a clean, self-contained project that status runs
+      against
+    given: an empty target directory
+    when: caps init runs and then caps status runs in the vendored project
+    then: the framework dirs are present (no __pycache__) and status exits 0
+    tier: cheap
+    deps:
+    - caps/initializer.py
+    - caps/cli.py
+    check: tests/integration/test_caps_init_cli.py::test_init_then_status_runs_clean

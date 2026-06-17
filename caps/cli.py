@@ -17,6 +17,7 @@ from .project import MANIFEST_NAME, LEDGER_REL, find_root
 from .gate import decide
 from .hookinstall import install_hook, uninstall_hook
 from .manifest_edit import add_capability, ManifestEditError
+from .initializer import init_project, kit_root
 
 
 _DISPLAY = {
@@ -120,6 +121,21 @@ def cmd_gate(stdin_text: str, now: datetime) -> int:
     return 0
 
 
+def cmd_init(target: str, force: bool, install_deps: bool) -> int:
+    results = init_project(target, kit=kit_root(), force=force, install_deps=install_deps)
+    for r in results:
+        print(f"  {r.action:11} {r.detail}")
+    print()
+    print("Next steps:")
+    print("  1. Add a capability:  python -m caps add --id <id> --tier <cheap|live> ...")
+    print("  2. Prove it:          python -m caps verify")
+    print("  3. (optional) enforce on every turn — the wrapper is vendored at")
+    print("     bin/caps-stop-gate.sh, but the hook is NOT installed by init.")
+    print("     Once this project has a Python with PyYAML, register it with:")
+    print("       CAPS_GATE_PYTHON=/path/to/python python -m caps install-hook")
+    return 0
+
+
 def main(argv=None, cwd: Optional[str] = None) -> int:
     parser = argparse.ArgumentParser(prog="caps")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -153,6 +169,13 @@ def main(argv=None, cwd: Optional[str] = None) -> int:
     grp.add_argument("--check", help="pytest node, e.g. checks/test_x.py::test_x")
     grp.add_argument("--shell", help="shell command; exit 0 = proven")
     ad.add_argument("--manifest", default=None, help="path to capabilities.yaml")
+
+    ini = sub.add_parser("init", help="vendor the framework into a project (drop-in installer)")
+    ini.add_argument("--target", default=None, help="target dir (default: cwd)")
+    ini.add_argument("--force", action="store_true",
+                     help="re-overwrite vendored ctk/caps/bin (never user files)")
+    ini.add_argument("--install-deps", dest="install_deps", action="store_true",
+                     help="pip-install PyYAML into the active environment")
 
     args = parser.parse_args(argv)
     now = datetime.now(timezone.utc)
@@ -191,6 +214,10 @@ def main(argv=None, cwd: Optional[str] = None) -> int:
             return 2
         print(f"added capability {args.id!r} (never-proven) -> {manifest_path}")
         return 0
+
+    if args.command == "init":
+        target = args.target or (cwd if cwd else str(Path.cwd()))
+        return cmd_init(target, args.force, args.install_deps)
 
     start = Path(cwd) if cwd else Path.cwd()
     root = find_root(start)

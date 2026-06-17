@@ -166,20 +166,25 @@ It appends a validated entry (validating in memory first — a bad append never 
 
 ## Using it in your project
 
-The framework is two packages plus a hook wrapper. Copy these in:
+One command vendors the framework into any project so it's self-contained:
 
 ```bash
-cp -r <kit>/ctk  <kit>/caps  <your-project>/
-cp    <kit>/conftest.py      <your-project>/      # workspace fixture + error-log guard
-cp -r <kit>/bin              <your-project>/      # only if you want the Stop-hook gate
-pip install PyYAML
+cd <your-project>
+PYTHONPATH=<kit> python -m caps init      # <kit> = a checkout/copy of this repo
 ```
 
-Then create your **own** `capabilities.yaml` (`caps add ...`), and optionally `python -m caps install-hook`.
+`init` copies `ctk/`, `caps/`, and `bin/` in (excluding build artifacts), adds a
+`conftest.py` and `pytest.ini` if you don't have them, writes a starter
+`capabilities.yaml` + `checks/`, and updates `.gitignore`. Every step is
+skip-if-exists, so re-running it only repairs what's missing. It never overwrites
+your `capabilities.yaml`, `conftest.py`, or pytest config; `--force` re-vendors
+only `ctk/`/`caps/`/`bin/`. Pass `--install-deps` to pip-install PyYAML, or run the
+printed one-liner yourself.
 
-**Do NOT copy** the kit's own `capabilities.yaml`, `.ctk/`, `examples/`, or `tests/` — those are this repo's promises, demo targets, and self-tests. Mirror `pytest.ini`'s `pythonpath`/markers so `ctk`/`caps` import and the `unit`/`integration` markers resolve.
-
-> A one-command `caps init` (lay down the framework + a starter manifest + optional hook, in one step) is being designed — see `docs/superpowers/specs/`. Until it lands, the manual copy above is the path.
+Then declare your own capabilities (`python -m caps add ...`). The Stop-hook gate
+is not installed by `init` under vendoring — the wrapper is vendored at
+`bin/caps-stop-gate.sh`, and `init` prints how to register it once this project has
+a Python with PyYAML.
 
 ## Layout
 
