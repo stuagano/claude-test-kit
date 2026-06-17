@@ -126,6 +126,21 @@ def test_duplicate_ids_raise(tmp_path):
 
 
 @pytest.mark.unit
+def test_empty_capabilities_block_loads_as_zero(tmp_path):
+    # A freshly-init'd manifest is a bare `capabilities:` header with no items;
+    # it must parse as zero capabilities (and stay appendable by `caps add`).
+    p = _write(tmp_path, "capabilities:\n")
+    assert load_manifest(p) == []
+
+
+@pytest.mark.unit
+def test_missing_capabilities_key_raises(tmp_path):
+    p = _write(tmp_path, "# no capabilities key here\nother: 1\n")
+    with pytest.raises(ManifestError):
+        load_manifest(p)
+
+
+@pytest.mark.unit
 def test_missing_required_field_raises(tmp_path):
     p = _write(tmp_path, """
         capabilities:
