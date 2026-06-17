@@ -168,3 +168,17 @@ def test_non_dict_requires_grep_entry_is_a_finding_not_a_crash(workspace):
     findings = find_stale_docs(doc_roots=("docs/",), repo_root=str(workspace.root))
     assert any(f.kind == "assertion_failed" and "not a mapping" in f.message
                for f in findings)
+
+
+def test_scan_exempt_suppresses_all_detectors_for_exempt_prefix(workspace):
+    # A doc under scan_exempt must produce NO findings even with a broken ref;
+    # a non-exempt doc with the same broken ref IS flagged.
+    workspace.write("docs/superpowers/x.md", "See `ctk/nope.py` for details.\n")
+    workspace.write("docs/live.md", "See `ctk/nope.py` for details.\n")
+    config = DocsConfig(scan_exempt=("docs/superpowers/",))
+    findings = find_stale_docs(
+        doc_roots=("docs/",), repo_root=str(workspace.root), config=config)
+    exempt_findings = [f for f in findings if f.doc.startswith("docs/superpowers/")]
+    live_findings = [f for f in findings if f.doc == "docs/live.md" and f.kind == "broken_ref"]
+    assert exempt_findings == [], f"scan_exempt doc should have no findings, got: {exempt_findings}"
+    assert live_findings, "non-exempt doc with broken ref should be flagged"

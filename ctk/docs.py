@@ -46,6 +46,9 @@ class DocsConfig:
     doc_roots: Sequence[str] = ("docs/", "README.md", "SKILL.md", "CLAUDE.md")
     entrypoints: Sequence[str] = ("README.md", "SKILL.md", "CLAUDE.md")
     ignore: Sequence[str] = ()                       # regexes: path-like tokens to skip
+    # Immutable archival trees (e.g. design-time specs) that must not be drift-checked
+    # by ANY detector — paths are repo-relative prefixes.
+    scan_exempt: Sequence[str] = ("docs/superpowers/",)
     orphan_exempt: Sequence[str] = ("docs/superpowers/",)
     known_top_dirs: Sequence[str] = ("caps/", "ctk/", "bin/", "tests/", "docs/", "examples/")
     tracked_ext: Sequence[str] = (
@@ -310,6 +313,10 @@ def find_stale_docs(
     config = config or DocsConfig(doc_roots=doc_roots)
     findings: list[Finding] = []
     docs = _iter_docs(doc_roots, repo_root)
+    # Exclude immutable archival trees from all detectors.
+    if config.scan_exempt:
+        exempt = tuple(config.scan_exempt)
+        docs = [d for d in docs if not d.startswith(exempt)]
     texts: dict[str, str] = {}
     for doc in docs:
         try:

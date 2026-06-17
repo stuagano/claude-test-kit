@@ -215,3 +215,20 @@ capabilities:
     - caps/initializer.py
     - caps/cli.py
     check: tests/integration/test_caps_init_cli.py::test_init_then_status_runs_clean
+  - id: docs-current
+    description: project docs don't drift from reality (no broken refs, dead links,
+      or failed doc assertions)
+    given: the docs tree and the code it describes
+    when: the docs staleness scan runs
+    then: no error-severity findings
+    tier: cheap
+    deps:
+    - docs/**
+    - README.md
+    - SKILL.md
+    - CLAUDE.md
+    - caps/**
+    - ctk/**
+    - bin/**
+    - docs-policy.yaml
+    check: tests/unit/test_docs_current.py::test_no_stale_docs

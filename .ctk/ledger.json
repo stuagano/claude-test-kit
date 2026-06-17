@@ -27,6 +27,13 @@
     "tier": "cheap",
     "waiver": null
   },
+  "docs-current": {
+    "at": "2026-06-17T18:37:45.528385+00:00",
+    "fingerprint": "sha256:31231c517f99990c44b285052f4fc3757e617f5c517f9a2b8d580d2c8ee5136f",
+    "result": "pass",
+    "tier": "cheap",
+    "waiver": null
+  },
   "error-log-guard-fails-test": {
     "at": "2026-06-17T04:20:50.832759+00:00",
     "fingerprint": "sha256:86d35296ad8f4a35607cf551c03112ccd59f85a0d9e4a952724514b6a9363c09",
@@ -140,8 +147,8 @@
     "waiver": null
   },
   "tests-green": {
-    "at": "2026-06-17T04:20:50.832759+00:00",
-    "fingerprint": "sha256:dddc6705da15bbfccc50814eb5f71d442910890b869f13f78c30273fa9b466f4",
+    "at": "2026-06-17T18:29:23.160128+00:00",
+    "fingerprint": "sha256:b48788ca0919face3c897a0b833e2108458d3505b300976d65e32d3d6a56cc5e",
     "result": "pass",
     "tier": "cheap",
     "waiver": null

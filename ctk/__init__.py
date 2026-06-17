@@ -43,6 +43,7 @@ from .verify import (
     VerificationError,
 )
 from .lint import find_swallowed_exceptions, SwallowedExcept
+from .docs import find_stale_docs, Finding, DocsConfig, format_findings
 
 __all__ = [
     "run",
@@ -61,6 +62,10 @@ __all__ = [
     "VerificationError",
     "find_swallowed_exceptions",
     "SwallowedExcept",
+    "find_stale_docs",
+    "Finding",
+    "DocsConfig",
+    "format_findings",
 ]
 
 __version__ = "0.1.0"
