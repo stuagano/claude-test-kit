@@ -1,8 +1,11 @@
 import textwrap
 from datetime import datetime, timezone
+from pathlib import Path
 
 import pytest
 from caps.cli import main
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
 def _project(tmp_path, manifest_body: str):
@@ -306,3 +309,14 @@ def test_add_duplicate_returns_2(tmp_path):
             "--given", "g", "--when", "w", "--then", "t", "--check", "c.py::t"]
     assert main(args, cwd=str(tmp_path)) == 0
     assert main(args, cwd=str(tmp_path)) == 2
+
+
+@pytest.mark.unit
+def test_init_force_onto_kit_errors_cleanly(capsys):
+    # `init --force` aimed at the kit itself (target resolves to the kit) must be
+    # refused with a clean error + exit 2 — not an uncaught ValueError traceback.
+    rc = main(["init", "--force"], cwd=str(REPO_ROOT))
+    captured = capsys.readouterr()
+    assert rc == 2
+    assert "error:" in captured.err
+    assert "refusing to overwrite the source" in captured.err

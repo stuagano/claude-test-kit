@@ -122,7 +122,12 @@ def cmd_gate(stdin_text: str, now: datetime) -> int:
 
 
 def cmd_init(target: str, force: bool, install_deps: bool) -> int:
-    results = init_project(target, kit=kit_root(), force=force, install_deps=install_deps)
+    try:
+        results = init_project(target, kit=kit_root(), force=force, install_deps=install_deps)
+    except ValueError as e:
+        # e.g. `init --force` aimed at the kit itself — refuse cleanly, not with a traceback.
+        print(f"error: {e}", file=sys.stderr)
+        return 2
     for r in results:
         print(f"  {r.action:11} {r.detail}")
     print()
