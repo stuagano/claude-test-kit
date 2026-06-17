@@ -136,3 +136,35 @@ def test_assertion_requires_grep_pass_and_fail(workspace):
     findings = find_stale_docs(doc_roots=("docs/",), repo_root=str(workspace.root))
     bad = [f for f in findings if f.kind == "assertion_failed"]
     assert len(bad) == 1 and bad[0].doc == "docs/bad.md"
+
+
+def test_malformed_front_matter_is_a_finding_not_a_crash(workspace):
+    # ': : :' is invalid YAML inside the front-matter block
+    workspace.write("docs/a.md", "---\n: : :\n---\n# A\n")
+    findings = find_stale_docs(doc_roots=("docs/",), repo_root=str(workspace.root))
+    assert any(f.severity == "error" and "front matter" in f.message.lower()
+               for f in findings)
+
+
+def test_unreadable_doc_is_a_finding(workspace, monkeypatch):
+    workspace.write("docs/a.md", "# A\n")
+    import ctk.docs as d
+    real_open = open
+
+    def boom(path, *a, **k):
+        if str(path).endswith("docs/a.md"):
+            raise OSError("permission denied")
+        return real_open(path, *a, **k)
+
+    monkeypatch.setattr("builtins.open", boom)
+    findings = d.find_stale_docs(doc_roots=("docs/",), repo_root=str(workspace.root))
+    assert any("could not read" in f.message for f in findings)
+
+
+def test_non_dict_requires_grep_entry_is_a_finding_not_a_crash(workspace):
+    # A bare string in requires_grep (not a dict) must not raise AttributeError
+    workspace.write("docs/a.md",
+        "---\nctk:\n  requires_grep:\n    - bare_string\n---\n# A\n")
+    findings = find_stale_docs(doc_roots=("docs/",), repo_root=str(workspace.root))
+    assert any(f.kind == "assertion_failed" and "not a mapping" in f.message
+               for f in findings)

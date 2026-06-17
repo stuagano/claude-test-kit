@@ -204,7 +204,10 @@ def _front_matter(text: str) -> tuple[dict, int]:
         return {}, 0
     block = text[4:end]
     import yaml
-    data = yaml.safe_load(block)
+    try:
+        data = yaml.safe_load(block)
+    except yaml.YAMLError as e:
+        raise ValueError(f"invalid YAML in front matter: {e}") from e
     if data is None:
         data = {}
     if not isinstance(data, dict):
@@ -224,6 +227,10 @@ def _detect_assertions(doc: str, text: str, repo_root: str, config: DocsConfig) 
             out.append(Finding(doc, 1, "assertion_failed", sev,
                                "requires_paths target does not exist", str(p)))
     for entry in ctk_block.get("requires_grep", []) or []:
+        if not isinstance(entry, dict):
+            out.append(Finding(doc, 1, "assertion_failed", sev,
+                               "requires_grep entry is not a mapping", str(entry)))
+            continue
         f_path = str(entry.get("file", ""))
         pattern = str(entry.get("pattern", ""))
         abs_p = os.path.join(repo_root, f_path)
@@ -251,7 +258,10 @@ def _detect_superseded(docs: list[str], texts: dict[str, str],
             if slug not in latest or date > latest[slug]:
                 latest[slug] = date
     for doc, text in texts.items():
-        fm, _ = _front_matter(text)
+        try:
+            fm, _ = _front_matter(text)
+        except ValueError:
+            fm = {}   # malformed front matter is already reported by _detect_assertions
         if "superseded_by" in fm:
             out.append(Finding(doc, 1, "superseded", sev,
                                "front-matter declares superseded_by",
@@ -311,7 +321,11 @@ def find_stale_docs(
     for doc, text in texts.items():
         findings.extend(_detect_broken_refs(doc, text, repo_root, config))
         findings.extend(_detect_dead_links(doc, text, repo_root, config))
-        findings.extend(_detect_assertions(doc, text, repo_root, config))
+        try:
+            findings.extend(_detect_assertions(doc, text, repo_root, config))
+        except ValueError as e:
+            findings.append(Finding(doc, 1, "assertion_failed", SEVERITY_ERROR,
+                                    f"malformed front matter: {e}", doc))
     findings.extend(_detect_orphans(list(texts), texts, repo_root, config))
     findings.extend(_detect_superseded(list(texts), texts, repo_root, config))
     return findings
