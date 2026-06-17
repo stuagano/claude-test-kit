@@ -7,22 +7,24 @@ from caps.manifest import load_manifest
 
 
 @pytest.mark.unit
-def test_vendor_copies_dirs_excluding_pycache(tmp_path):
-    # Fake a kit with the three framework dirs + a stray __pycache__/.pyc.
+def test_vendor_copies_packages_and_wrapper_excluding_pycache(tmp_path):
     kit = tmp_path / "kit"
-    for d in ("ctk", "caps", "bin"):
+    for d in ("ctk", "caps"):
         (kit / d).mkdir(parents=True)
         (kit / d / "mod.py").write_text("x = 1\n")
         (kit / d / "__pycache__").mkdir()
         (kit / d / "__pycache__" / "mod.pyc").write_text("junk")
+    (kit / "bin").mkdir()
+    (kit / "bin" / "caps-stop-gate.sh").write_text("echo gate\n")
     target = tmp_path / "proj"
     target.mkdir()
 
     results = initializer.vendor_framework(target, kit, force=False)
 
-    for d in ("ctk", "caps", "bin"):
+    for d in ("ctk", "caps"):
         assert (target / d / "mod.py").is_file()
         assert not (target / d / "__pycache__").exists(), "must not vendor build artifacts"
+    assert (target / "bin" / "caps-stop-gate.sh").read_text() == "echo gate\n"
     assert {r.action for r in results} == {"created"}
 
 
@@ -32,7 +34,7 @@ def test_vendor_skips_existing_without_force_overwrites_with_force(tmp_path):
     (kit / "ctk").mkdir(parents=True)
     (kit / "ctk" / "mod.py").write_text("new = 2\n")
     (kit / "caps").mkdir(); (kit / "caps" / "mod.py").write_text("c = 1\n")
-    (kit / "bin").mkdir(); (kit / "bin" / "g.sh").write_text("echo\n")
+    (kit / "bin").mkdir(); (kit / "bin" / "caps-stop-gate.sh").write_text("echo\n")
     target = tmp_path / "proj"
     (target / "ctk").mkdir(parents=True)
     (target / "ctk" / "mod.py").write_text("old = 1\n")  # pre-existing
@@ -61,10 +63,26 @@ def test_vendor_allows_self_target_without_force(tmp_path):
     (kit / "ctk").mkdir(parents=True)
     (kit / "ctk" / "mod.py").write_text("x = 1\n")
     (kit / "caps").mkdir(); (kit / "caps" / "mod.py").write_text("c = 1\n")
-    (kit / "bin").mkdir(); (kit / "bin" / "g.sh").write_text("echo\n")
+    (kit / "bin").mkdir(); (kit / "bin" / "caps-stop-gate.sh").write_text("echo\n")
     # Re-running init from inside an installed project must NOT raise; it skips.
     results = initializer.vendor_framework(kit, kit, force=False)
     assert all(r.action == "skipped" for r in results)
+
+
+@pytest.mark.unit
+def test_vendor_force_preserves_user_bin_scripts(tmp_path):
+    kit = tmp_path / "kit"
+    (kit / "ctk").mkdir(parents=True); (kit / "ctk" / "mod.py").write_text("x = 1\n")
+    (kit / "caps").mkdir(); (kit / "caps" / "mod.py").write_text("c = 1\n")
+    (kit / "bin").mkdir(); (kit / "bin" / "caps-stop-gate.sh").write_text("echo gate\n")
+    target = tmp_path / "proj"
+    (target / "bin").mkdir(parents=True)
+    (target / "bin" / "my_script.sh").write_text("echo mine\n")  # user's own script
+
+    initializer.vendor_framework(target, kit, force=True)
+
+    assert (target / "bin" / "my_script.sh").read_text() == "echo mine\n"  # survives --force
+    assert (target / "bin" / "caps-stop-gate.sh").read_text() == "echo gate\n"  # wrapper placed
 
 
 @pytest.mark.unit
