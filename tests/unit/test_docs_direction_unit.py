@@ -51,3 +51,10 @@ def test_overtaken_with_fake_evidence_is_discarded(workspace):
         ["docs/a.md"], repo_root=str(workspace.root), runner=runner)
     assert verdicts[0].verdict == "uncertain"
     assert "evidence" in verdicts[0].rationale.lower()
+
+
+def test_default_runner_raises_when_cli_missing(monkeypatch):
+    import ctk.docs_direction as dd
+    monkeypatch.setattr(dd.shutil, "which", lambda _name: None)
+    with pytest.raises(dd.ClaudeUnavailable):
+        dd._claude_cli_runner("any prompt")
