@@ -215,3 +215,34 @@ capabilities:
     - caps/initializer.py
     - caps/cli.py
     check: tests/integration/test_caps_init_cli.py::test_init_then_status_runs_clean
+  - id: status-json-is-machine-readable
+    description: caps status --json emits structured state for the harness to consume
+    given: a project with a failed capability
+    when: status --json runs
+    then: it reports the failing id in blocking[], ok=false, and the failure detail
+    tier: cheap
+    deps:
+    - caps/cli.py
+    check: tests/unit/test_caps_cli.py::test_status_json_is_machine_readable
+  - id: doctor-flags-broken-setup
+    description: caps doctor fails when a check file is missing so silent setup gaps
+      surface
+    given: a manifest whose check file does not exist
+    when: caps doctor runs
+    then: it reports the missing check and exits non-zero
+    tier: cheap
+    deps:
+    - caps/doctor.py
+    - caps/cli.py
+    check: tests/unit/test_caps_doctor.py::test_missing_check_file_is_a_failure
+  - id: verify-records-timing
+    description: verify records each check's wall-clock duration in the ledger
+    given: a capability whose check runs
+    when: caps verify executes it
+    then: the ledger entry carries a duration so slow/flaky checks are visible
+    tier: cheap
+    deps:
+    - caps/cli.py
+    - caps/runner.py
+    - caps/ledger.py
+    check: tests/unit/test_caps_cli.py::test_verify_records_duration

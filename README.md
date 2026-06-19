@@ -125,22 +125,34 @@ A `check` is a `ctk`-based pytest test (or a shell command, exit 0 = proven) imp
 
 ```bash
 python -m caps status                    # read-only: proven / stale / failed / waived / never-proven
+python -m caps status --json             # same, machine-readable (state, detail, changed deps, blocking[])
+python -m caps doctor                    # diagnose setup: manifest valid? checks present? hook installed?
 python -m caps verify                    # run checks, record proof; non-zero exit if any fail
 python -m caps verify --capability <id>  # just one
+python -m caps verify --stale            # re-prove only what the gate would block on (one command)
 python -m caps ack <id> --reason "..."   # time-boxed waiver when it genuinely can't be proven now
 python -m caps add  ...                  # propose a new capability (see Discovery)
 ```
+
+`status --json` is the harness's read path — a consumer gets `{capabilities, summary, blocking, ok}` (each cap carries its `state`, plus `detail`/`changed`/`waiver`/`duration` evidence) without scraping text. `doctor` catches the silent setup gaps that make a green run a lie: an unparseable manifest, a `check` whose file doesn't exist, the Stop hook never installed. It exits non-zero only on hard problems (missing/invalid), so it's safe as a setup gate.
+
+Every `verify` records each check's wall-clock **duration** in the ledger (shown by `status` and `--json`), and flags a check whose runtime *regressed* — at least doubled and grew by ≥0.5s vs the last run — so a check that suddenly got slow, or a flaky live capability, is visible instead of silently dragging the loop.
+
+When a check fails or errors, `verify` records a trimmed snippet of its output in
+the ledger alongside the result — so the failure can be read (and fixed) without
+re-running it. `--stale` is the inner-loop companion to the gate: the gate tells
+you *what* broke, `--stale` re-proves exactly that set in one shot.
 
 ## Freshness & the ledger
 
 Proof is recorded in `.ctk/ledger.json` (committed, so CI / another machine sees current state). **Freshness differs by tier** — and the distinction is deliberate:
 
-- **cheap → `freshness: code`** (fingerprint of the check + its `deps`). Touch a dep → stale → re-prove. Honest for local/deterministic checks. (Build artifacts like `__pycache__/*.pyc` are ignored.)
+- **cheap → `freshness: code`** (fingerprint of the check + its `deps`). Touch a dep → stale → re-prove. Honest for local/deterministic checks. (Build artifacts like `__pycache__/*.pyc` are ignored.) `verify` also records a per-dep hash map, so a later code-stale reports **which** file drifted (`status` and the gate name it); broad globs (>25 files) skip the map to keep the ledger lean and just report `code-stale`.
 - **live → `freshness: 24h`** (time window). A live capability can break with *zero code change* (revoked perms, deleted instance), so its proof *expires* by the clock.
 
 ## Enforcement — the `Stop` hook
 
-`caps install-hook` registers a global `Stop` hook (backs up `settings.json` first). On every turn, in any project that has a `capabilities.yaml`, it blocks "done" when a capability is **never-proven, failed, or code-stale** — handing the reason back so it gets fixed. It is:
+`caps install-hook` registers a global `Stop` hook (backs up `settings.json` first). On every turn, in any project that has a `capabilities.yaml`, it blocks "done" when a capability is **never-proven, failed, or code-stale** — handing the reason back so it gets fixed. For a failed/errored capability it inlines the **recorded failure output** (assertion, file:line, message) so the fix needs no re-run, and points at a single `python -m caps verify --stale` to re-prove the whole blocking set. It is:
 
 - **read-only & fast** — it reads the ledger and hashes deps; it never runs checks on a turn boundary, and short-circuits instantly (no Python) in projects with no manifest;
 - **self-clearing** — blocks at most once per turn (`stop_hook_active`), never an infinite loop;
@@ -194,7 +206,7 @@ claude-test-kit/
 │   ├── runners.py contracts.py assertions.py verify.py lint.py logguard.py
 ├── caps/                   # Layer 2 — capability verification (uses ctk)
 │   ├── manifest.py fingerprint.py ledger.py freshness.py state.py runner.py
-│   ├── gate.py manifest_edit.py hookinstall.py backup.py cli.py __main__.py
+│   ├── gate.py manifest_edit.py hookinstall.py backup.py doctor.py cli.py __main__.py
 ├── bin/caps-stop-gate.sh   # the Stop-hook wrapper (registered by install-hook)
 ├── conftest.py             # workspace fixture + error-log guard (shared)
 ├── capabilities.yaml       # THIS kit's own capabilities (it dogfoods itself)
