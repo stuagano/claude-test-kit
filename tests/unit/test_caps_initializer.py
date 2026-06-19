@@ -16,6 +16,7 @@ def test_vendor_copies_packages_and_wrapper_excluding_pycache(tmp_path):
         (kit / d / "__pycache__" / "mod.pyc").write_text("junk")
     (kit / "bin").mkdir()
     (kit / "bin" / "caps-stop-gate.sh").write_text("echo gate\n")
+    (kit / "bin" / "caps-ponytail.sh").write_text("echo posture\n")
     target = tmp_path / "proj"
     target.mkdir()
 
@@ -25,6 +26,7 @@ def test_vendor_copies_packages_and_wrapper_excluding_pycache(tmp_path):
         assert (target / d / "mod.py").is_file()
         assert not (target / d / "__pycache__").exists(), "must not vendor build artifacts"
     assert (target / "bin" / "caps-stop-gate.sh").read_text() == "echo gate\n"
+    assert (target / "bin" / "caps-ponytail.sh").read_text() == "echo posture\n"
     assert {r.action for r in results} == {"created"}
 
 

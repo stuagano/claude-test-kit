@@ -132,6 +132,8 @@ python -m caps verify --capability <id>  # just one
 python -m caps verify --stale            # re-prove only what the gate would block on (one command)
 python -m caps ack <id> --reason "..."   # time-boxed waiver when it genuinely can't be proven now
 python -m caps add  ...                  # propose a new capability (see Discovery)
+python -m caps ponytail                  # print the "lazy senior dev" posture (see Posture)
+python -m caps install-ponytail          # inject that posture at session start (SessionStart hook)
 ```
 
 `status --json` is the harness's read path — a consumer gets `{capabilities, summary, blocking, ok}` (each cap carries its `state`, plus `detail`/`changed`/`waiver`/`duration` evidence) without scraping text. `doctor` catches the silent setup gaps that make a green run a lie: an unparseable manifest, a `check` whose file doesn't exist, the Stop hook never installed. It exits non-zero only on hard problems (missing/invalid), so it's safe as a setup gate.
@@ -160,6 +162,12 @@ Proof is recorded in `.ctk/ledger.json` (committed, so CI / another machine sees
 - **fail-open** — any internal error allows the turn (with a visible note) rather than bricking it.
 
 Remove with `python -m caps uninstall-hook`.
+
+## Posture — the `SessionStart` hook
+
+If the gate is the **floor** ("you can't claim done until your claims are proven"), the ponytail posture is the **ceiling** ("don't build more than the claim needs"). `caps install-ponytail` registers a `SessionStart` hook that injects a short *lazy senior dev* standing instruction — a YAGNI-first ladder (does this need to exist? → stdlib? → native feature? → installed dep? → one line? → only then write it), with an explicit floor it never crosses (validation, error handling, security, accessibility, anything you asked for). Same wrapper discipline as the gate: short-circuits with no Python in projects without a `capabilities.yaml`, and fails open. Print it with `python -m caps ponytail`; remove with `python -m caps uninstall-ponytail`.
+
+> The idea is ported from [Ponytail](https://github.com/DietrichGebert/ponytail) (MIT) — the standing-posture hook, not its Node.js mode machine. One static posture for now (no lite/full/ultra); add intensity modes if a project wants them.
 
 ## Discovery — `caps add`
 
@@ -206,8 +214,9 @@ claude-test-kit/
 │   ├── runners.py contracts.py assertions.py verify.py lint.py logguard.py
 ├── caps/                   # Layer 2 — capability verification (uses ctk)
 │   ├── manifest.py fingerprint.py ledger.py freshness.py state.py runner.py
-│   ├── gate.py manifest_edit.py hookinstall.py backup.py doctor.py cli.py __main__.py
+│   ├── gate.py manifest_edit.py hookinstall.py backup.py doctor.py ponytail.py cli.py __main__.py
 ├── bin/caps-stop-gate.sh   # the Stop-hook wrapper (registered by install-hook)
+├── bin/caps-ponytail.sh    # the SessionStart posture wrapper (registered by install-ponytail)
 ├── conftest.py             # workspace fixture + error-log guard (shared)
 ├── capabilities.yaml       # THIS kit's own capabilities (it dogfoods itself)
 ├── .ctk/ledger.json        # committed proof state
