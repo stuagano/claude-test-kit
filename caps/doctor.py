@@ -37,7 +37,12 @@ def _hook_finding(settings_path: Path) -> Finding:
         data = json.loads(settings_path.read_text() or "{}")
     except json.JSONDecodeError as e:
         return Finding(WARN, f"stop-hook: {settings_path} is not valid JSON ({e})")
-    stops = data.get("hooks", {}).get("Stop", [])
+    hooks = data.get("hooks", {}) if isinstance(data, dict) else {}
+    if not isinstance(hooks, dict):
+        return Finding(WARN, f"stop-hook: {settings_path} has an invalid 'hooks' shape (expected object)")
+    stops = hooks.get("Stop", [])
+    if not isinstance(stops, list):
+        return Finding(WARN, f"stop-hook: {settings_path} has an invalid 'hooks.Stop' shape (expected list)")
     if any(isinstance(h, dict) and h.get("_caps") == HOOK_TAG for h in stops):
         return Finding(OK, f"stop-hook: installed in {settings_path}")
     return Finding(WARN, "stop-hook: not installed — the gate won't run in-band "

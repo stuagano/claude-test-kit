@@ -44,7 +44,7 @@ SLOW_REGRESSION_FLOOR = 0.5  # seconds
 
 def _slowdown_note(cap_id: str, prev: Optional[float], new: float) -> Optional[str]:
     """Flag a real timing regression against the previously-recorded duration."""
-    if prev and new >= prev * SLOW_REGRESSION_FACTOR and (new - prev) >= SLOW_REGRESSION_FLOOR:
+    if prev is not None and new >= prev * SLOW_REGRESSION_FACTOR and (new - prev) >= SLOW_REGRESSION_FLOOR:
         return f"{cap_id}: slower — {prev:.2f}s -> {new:.2f}s (check timing regressed)"
     return None
 

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import glob
 import hashlib
+import os
 from pathlib import Path
 from typing import Optional, Union
 
@@ -35,14 +36,21 @@ def _collect_files(capability: Capability, root: Path) -> list[Path]:
 
 def _resolve_rels(capability: Capability, root: Path) -> list[str]:
     """The deduped, sorted root-relative paths that make up a capability's
-    fingerprint surface (check file + dep matches, build artifacts excluded)."""
+    fingerprint surface (check file + dep matches, build artifacts excluded).
+
+    Keys are posix-normalized and stay relative to root even for a dep that
+    escapes it (a ``../`` path rather than an absolute host path), so the ledger
+    they land in stays portable across machines.
+    """
+    root = root.resolve()
     seen: set[str] = set()
     for f in _collect_files(capability, root):
         f = f if f.is_absolute() else (root / f)
+        abs_f = f.resolve()
         try:
-            rel = str(f.resolve().relative_to(root.resolve()))
+            rel = abs_f.relative_to(root).as_posix()
         except ValueError:
-            rel = str(f)
+            rel = Path(os.path.relpath(abs_f, root)).as_posix()
         seen.add(rel)
     return sorted(seen)
 

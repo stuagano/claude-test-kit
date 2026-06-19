@@ -184,6 +184,9 @@ def test_slowdown_note_fires_only_on_real_regression():
     assert _slowdown_note("c", 0.001, 0.3) is None
     # No prior timing -> nothing to compare.
     assert _slowdown_note("c", None, 5.0) is None
+    # A recorded 0.0 is a real prior (sub-ms check, rounded), not "unknown" —
+    # it must not silently disable detection.
+    assert _slowdown_note("c", 0.0, 1.0) is not None
 
 
 @pytest.mark.unit

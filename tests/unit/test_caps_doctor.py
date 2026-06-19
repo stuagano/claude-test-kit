@@ -92,6 +92,19 @@ def test_hook_missing_is_a_warning_not_a_failure(tmp_path):
 
 
 @pytest.mark.unit
+@pytest.mark.parametrize("hooks", ['[]', '{"Stop": null}', '{"Stop": 7}', '"nope"'])
+def test_malformed_hooks_warns_instead_of_crashing(tmp_path, hooks):
+    # doctor diagnoses broken setup; it must not itself crash on odd settings.json.
+    _project(tmp_path, GOOD)
+    (tmp_path / "checks" / "test_x.py").write_text("def test_x(): pass\n")
+    settings = tmp_path / "settings.json"
+    settings.write_text(f'{{"hooks": {hooks}}}')
+    findings = diagnose(tmp_path, NOW, settings_path=settings)   # must not raise
+    assert any(f.level == WARN and "stop-hook" in f.message for f in findings)
+    assert exit_code(findings) == 0
+
+
+@pytest.mark.unit
 def test_unproven_capability_reported_in_proof_state(tmp_path):
     _project(tmp_path, GOOD)
     (tmp_path / "checks" / "test_x.py").write_text("def test_x(): pass\n")

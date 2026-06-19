@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import pytest
 from caps.manifest import Capability
 from caps.fingerprint import fingerprint, file_fingerprints, changed_deps
@@ -82,6 +84,22 @@ def test_changed_deps_names_the_modified_file(tmp_path):
     recorded = file_fingerprints(cap, tmp_path)
     (tmp_path / "b.py").write_text("b = 2\n")   # only b changes
     assert changed_deps(cap, recorded, tmp_path) == ["b.py"]
+
+
+@pytest.mark.unit
+def test_out_of_root_dep_key_is_relative_not_absolute(tmp_path):
+    # A dep that escapes root must still be keyed relatively (../…), never as an
+    # absolute host path that would leak into and unportabilize the ledger.
+    root = tmp_path / "proj"
+    (root / "checks").mkdir(parents=True)
+    (root / "checks" / "test_x.py").write_text("def test_x(): pass\n")
+    (tmp_path / "sibling.py").write_text("s = 1\n")   # lives outside root
+    cap = _cap(deps=["../sibling.py"])
+    keys = set(file_fingerprints(cap, root))
+    assert "checks/test_x.py" in keys
+    outside = next(k for k in keys if "sibling.py" in k)
+    assert not Path(outside).is_absolute()
+    assert outside.startswith("../")
 
 
 @pytest.mark.unit
