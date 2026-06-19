@@ -85,6 +85,40 @@ def test_proven_fresh_allows(tmp_path):
 
 
 @pytest.mark.unit
+def test_code_stale_block_names_the_changed_dep(tmp_path):
+    # Prove c1 against ingest.py, then change ingest.py: the cap goes code-stale
+    # and the block message must name *which* dep drifted.
+    _project(tmp_path, """
+        capabilities:
+          - id: c1
+            description: d
+            given: g
+            when: w
+            then: rows read back
+            tier: cheap
+            deps: [ingest.py]
+            check: checks/test_x.py::test_x
+    """)
+    (tmp_path / "checks" / "test_x.py").write_text("def test_x(): pass\n")
+    (tmp_path / "ingest.py").write_text("x = 1\n")
+    from caps.manifest import load_manifest
+    from caps.fingerprint import fingerprint, file_fingerprints
+    from caps.ledger import LedgerEntry, save_ledger
+    from caps.project import LEDGER_REL
+    cap = load_manifest(tmp_path / "capabilities.yaml")[0]
+    save_ledger(tmp_path / LEDGER_REL, {"c1": LedgerEntry(
+        result="pass", at=NOW.isoformat(), tier="cheap",
+        fingerprint=fingerprint(cap, tmp_path),
+        files=file_fingerprints(cap, tmp_path))})
+    (tmp_path / "ingest.py").write_text("x = 2\n")   # drift one dep
+    d = decide(_payload(tmp_path), NOW)
+    assert d.block is True
+    assert "code-stale" in d.reason
+    assert "changed since last proof" in d.reason
+    assert "ingest.py" in d.reason
+
+
+@pytest.mark.unit
 def test_time_expired_does_not_block_but_notes(tmp_path):
     _project(tmp_path, """
         capabilities:

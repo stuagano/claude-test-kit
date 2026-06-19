@@ -88,7 +88,49 @@ def test_verify_records_fail_and_exits_nonzero(tmp_path):
 
 
 @pytest.mark.unit
-def test_verify_pass_records_no_detail(tmp_path):
+def test_verify_records_per_file_map_for_narrow_deps(tmp_path):
+    p = _project(tmp_path, """
+        capabilities:
+          - id: cap
+            description: x
+            given: g
+            when: w
+            then: t
+            tier: cheap
+            deps: [ingest.py]
+            check: checks/test_ok.py::test_ok
+    """)
+    (p / "checks" / "test_ok.py").write_text("def test_ok():\n    assert True\n")
+    (p / "ingest.py").write_text("x = 1\n")
+    main(["verify"], cwd=str(p))
+    from caps.ledger import load_ledger
+    files = load_ledger(p / ".ctk" / "ledger.json")["cap"].files
+    assert set(files) == {"checks/test_ok.py", "ingest.py"}
+
+
+@pytest.mark.unit
+def test_verify_skips_per_file_map_for_broad_glob(tmp_path):
+    # A glob resolving to more than FILE_MAP_LIMIT files records no per-file map,
+    # keeping the committed ledger lean.
+    from caps.fingerprint import FILE_MAP_LIMIT
+    p = _project(tmp_path, """
+        capabilities:
+          - id: cap
+            description: x
+            given: g
+            when: w
+            then: t
+            tier: cheap
+            deps: ["lib/**"]
+            check: checks/test_ok.py::test_ok
+    """)
+    (p / "checks" / "test_ok.py").write_text("def test_ok():\n    assert True\n")
+    (p / "lib").mkdir()
+    for i in range(FILE_MAP_LIMIT + 2):
+        (p / "lib" / f"m{i}.py").write_text(f"v = {i}\n")
+    main(["verify"], cwd=str(p))
+    from caps.ledger import load_ledger
+    assert load_ledger(p / ".ctk" / "ledger.json")["cap"].files is None
     p = _project(tmp_path, """
         capabilities:
           - id: ok-cap

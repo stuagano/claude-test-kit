@@ -141,7 +141,7 @@ you *what* broke, `--stale` re-proves exactly that set in one shot.
 
 Proof is recorded in `.ctk/ledger.json` (committed, so CI / another machine sees current state). **Freshness differs by tier** — and the distinction is deliberate:
 
-- **cheap → `freshness: code`** (fingerprint of the check + its `deps`). Touch a dep → stale → re-prove. Honest for local/deterministic checks. (Build artifacts like `__pycache__/*.pyc` are ignored.)
+- **cheap → `freshness: code`** (fingerprint of the check + its `deps`). Touch a dep → stale → re-prove. Honest for local/deterministic checks. (Build artifacts like `__pycache__/*.pyc` are ignored.) `verify` also records a per-dep hash map, so a later code-stale reports **which** file drifted (`status` and the gate name it); broad globs (>25 files) skip the map to keep the ledger lean and just report `code-stale`.
 - **live → `freshness: 24h`** (time window). A live capability can break with *zero code change* (revoked perms, deleted instance), so its proof *expires* by the clock.
 
 ## Enforcement — the `Stop` hook

@@ -9,7 +9,7 @@ from typing import Optional
 
 from .manifest import load_manifest, ManifestError
 from .ledger import load_ledger, LedgerEntry, save_ledger
-from .fingerprint import fingerprint
+from .fingerprint import fingerprint, file_fingerprints, changed_deps, FILE_MAP_LIMIT
 from .freshness import is_fresh, waiver_active, parse_duration, FreshnessError
 from .runner import run_capability
 from .state import capability_state, BLOCK_STATES
@@ -46,9 +46,16 @@ def cmd_status(root: Path, now: datetime) -> int:
     _print_warnings(caps)
     ledger = load_ledger(root / LEDGER_REL)
     for cap in caps:
-        state = capability_state(cap, ledger.get(cap.id), root, now)
+        entry = ledger.get(cap.id)
+        state = capability_state(cap, entry, root, now)
         label = _DISPLAY[state]
-        print(f"[{_GLYPH.get(label, '?'):5}] {cap.id:30} {label}")
+        line = f"[{_GLYPH.get(label, '?'):5}] {cap.id:30} {label}"
+        if state == "code-stale":
+            changed = changed_deps(cap, getattr(entry, "files", None), root)
+            if changed:
+                more = f", +{len(changed) - 3}" if len(changed) > 3 else ""
+                line += f"  (changed: {', '.join(changed[:3])}{more})"
+        print(line)
     return 0
 
 
@@ -78,6 +85,11 @@ def cmd_verify(root: Path, now: datetime, only: Optional[str],
             print(f"{cap.id}: skipped (waived)")
             continue
         result, detail = run_capability(cap, root)
+        fmap = None
+        if cap.freshness == "code":
+            fmap = file_fingerprints(cap, root)
+            if len(fmap) > FILE_MAP_LIMIT:
+                fmap = None   # broad glob: keep the ledger lean, skip itemizing
         ledger[cap.id] = LedgerEntry(
             result=result,
             at=now.isoformat(),
@@ -85,6 +97,7 @@ def cmd_verify(root: Path, now: datetime, only: Optional[str],
             fingerprint=fingerprint(cap, root) if cap.freshness == "code" else None,
             waiver=None,
             detail=detail if result != "pass" else None,
+            files=fmap,
         )
         print(f"{cap.id}: {result}")
         if result != "pass":

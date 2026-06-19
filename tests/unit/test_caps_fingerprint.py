@@ -1,6 +1,6 @@
 import pytest
 from caps.manifest import Capability
-from caps.fingerprint import fingerprint
+from caps.fingerprint import fingerprint, file_fingerprints, changed_deps
 
 
 def _cap(**kw):
@@ -47,6 +47,49 @@ def test_glob_deps_matched(tmp_path):
     fp1 = fingerprint(cap, tmp_path)
     (tmp_path / "lib" / "a.py").write_text("a = 99\n")
     assert fingerprint(cap, tmp_path) != fp1
+
+
+@pytest.mark.unit
+def test_file_fingerprints_maps_each_file(tmp_path):
+    (tmp_path / "checks").mkdir()
+    (tmp_path / "checks" / "test_x.py").write_text("def test_x(): pass\n")
+    (tmp_path / "ingest.py").write_text("x = 1\n")
+    cap = _cap(deps=["ingest.py"])
+    fmap = file_fingerprints(cap, tmp_path)
+    assert set(fmap) == {"checks/test_x.py", "ingest.py"}
+    assert all(v.startswith("sha256:") for v in fmap.values())
+
+
+@pytest.mark.unit
+def test_file_fingerprints_excludes_pyc(tmp_path):
+    (tmp_path / "checks").mkdir()
+    (tmp_path / "checks" / "test_x.py").write_text("def test_x(): pass\n")
+    (tmp_path / "pkg").mkdir()
+    (tmp_path / "pkg" / "a.py").write_text("a = 1\n")
+    (tmp_path / "pkg" / "__pycache__").mkdir()
+    (tmp_path / "pkg" / "__pycache__" / "a.pyc").write_text("BYTECODE")
+    cap = _cap(deps=["pkg/**"])
+    assert set(file_fingerprints(cap, tmp_path)) == {"checks/test_x.py", "pkg/a.py"}
+
+
+@pytest.mark.unit
+def test_changed_deps_names_the_modified_file(tmp_path):
+    (tmp_path / "checks").mkdir()
+    (tmp_path / "checks" / "test_x.py").write_text("def test_x(): pass\n")
+    (tmp_path / "a.py").write_text("a = 1\n")
+    (tmp_path / "b.py").write_text("b = 1\n")
+    cap = _cap(deps=["a.py", "b.py"])
+    recorded = file_fingerprints(cap, tmp_path)
+    (tmp_path / "b.py").write_text("b = 2\n")   # only b changes
+    assert changed_deps(cap, recorded, tmp_path) == ["b.py"]
+
+
+@pytest.mark.unit
+def test_changed_deps_empty_without_recorded_map(tmp_path):
+    # Older proofs have no per-file map; we can't itemize, so return nothing.
+    (tmp_path / "checks").mkdir()
+    (tmp_path / "checks" / "test_x.py").write_text("def test_x(): pass\n")
+    assert changed_deps(_cap(), None, tmp_path) == []
 
 
 @pytest.mark.unit

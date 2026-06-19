@@ -9,6 +9,7 @@ from .project import MANIFEST_NAME, LEDGER_REL, find_root
 from .manifest import load_manifest
 from .ledger import load_ledger
 from .state import capability_state, BLOCK_STATES
+from .fingerprint import changed_deps
 
 
 @dataclass
@@ -35,6 +36,19 @@ def resolve_root(payload: dict) -> Optional[Path]:
 # How many lines of a recorded failure to echo into the block message. The full
 # snippet lives in the ledger; the gate shows just enough to fix without re-running.
 DETAIL_LINES = 20
+# Cap how many changed deps to name inline before summarizing the rest.
+CHANGED_DEPS_SHOWN = 8
+
+
+def _changed_dep_line(cap, entry, root) -> list:
+    """Name the dep(s) that drifted since the last proof, for a code-stale cap."""
+    changed = changed_deps(cap, getattr(entry, "files", None), root)
+    if not changed:
+        return []
+    shown = ", ".join(changed[:CHANGED_DEPS_SHOWN])
+    if len(changed) > CHANGED_DEPS_SHOWN:
+        shown += f" (+{len(changed) - CHANGED_DEPS_SHOWN} more)"
+    return [f"      changed since last proof: {shown}"]
 
 
 def _detail_lines(entry) -> list:
@@ -79,6 +93,8 @@ def decide(payload: dict, now: datetime) -> GateDecision:
     lines = ["✗ Capabilities not proven & fresh — resolve before finishing:"]
     for cap, state, entry in blocking:
         lines.append(f"  • {cap.id} [{state}]: {cap.then}")
+        if state == "code-stale":
+            lines.extend(_changed_dep_line(cap, entry, root))
         lines.extend(_detail_lines(entry))
     if note:
         lines.append(f"  (note) {note}")

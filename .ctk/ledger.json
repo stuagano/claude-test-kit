@@ -2,6 +2,7 @@
   "add-cannot-fake-a-pass": {
     "at": "2026-06-17T04:20:50.832759+00:00",
     "detail": null,
+    "files": null,
     "fingerprint": "sha256:1ec8a12089bf90b325203053cea11a648afae84eaa2c223292e748582bba06f4",
     "result": "pass",
     "tier": "cheap",
@@ -10,6 +11,7 @@
   "add-validates-before-write": {
     "at": "2026-06-17T04:20:50.832759+00:00",
     "detail": null,
+    "files": null,
     "fingerprint": "sha256:024f059de625f49e2af26d5109c2d1ec8e3de9772f0061f42a93c5314ebf13a4",
     "result": "pass",
     "tier": "cheap",
@@ -18,6 +20,7 @@
   "claim-vs-reality-flags-false-alarm": {
     "at": "2026-06-17T04:20:50.832759+00:00",
     "detail": null,
+    "files": null,
     "fingerprint": "sha256:adadcf682b7f1193b41b82af2e6841173d352e73244b65bfc4bdf9e4c363d8ff",
     "result": "pass",
     "tier": "cheap",
@@ -26,6 +29,7 @@
   "claim-vs-reality-trips": {
     "at": "2026-06-17T04:20:50.832759+00:00",
     "detail": null,
+    "files": null,
     "fingerprint": "sha256:adadcf682b7f1193b41b82af2e6841173d352e73244b65bfc4bdf9e4c363d8ff",
     "result": "pass",
     "tier": "cheap",
@@ -34,6 +38,7 @@
   "error-log-guard-fails-test": {
     "at": "2026-06-17T04:20:50.832759+00:00",
     "detail": null,
+    "files": null,
     "fingerprint": "sha256:86d35296ad8f4a35607cf551c03112ccd59f85a0d9e4a952724514b6a9363c09",
     "result": "pass",
     "tier": "cheap",
@@ -42,6 +47,7 @@
   "error-log-guard-opt-out": {
     "at": "2026-06-17T04:20:50.832759+00:00",
     "detail": null,
+    "files": null,
     "fingerprint": "sha256:86d35296ad8f4a35607cf551c03112ccd59f85a0d9e4a952724514b6a9363c09",
     "result": "pass",
     "tier": "cheap",
@@ -50,31 +56,46 @@
   "expect-collects-all-failures": {
     "at": "2026-06-17T04:20:50.832759+00:00",
     "detail": null,
+    "files": null,
     "fingerprint": "sha256:c1f94a6b4030fc2798d650dc0d0e196a1e48783df98497664cc2179efe5472fb",
     "result": "pass",
     "tier": "cheap",
     "waiver": null
   },
   "fingerprint-ignores-artifacts": {
-    "at": "2026-06-17T04:20:50.832759+00:00",
+    "at": "2026-06-19T01:40:10.085856+00:00",
     "detail": null,
-    "fingerprint": "sha256:2b537cc519952515c2d449226fb96d8a93b567b387f29bf3879585f39e5e59fe",
+    "files": {
+      "caps/fingerprint.py": "sha256:4dd34b4a9530b2d814e6d3f6bcdac799dafdbe023fe916e5009272b0e23837db",
+      "tests/unit/test_caps_fingerprint.py": "sha256:e4af74a76a99815e76b5b293e7fc235b6756fd67aac3b67af4e4e6f7058b00f3"
+    },
+    "fingerprint": "sha256:fdf354ac0aad564cbc3efd7a3c9df520df66c7cf172e30a1b8dd5d7cbcc5887d",
     "result": "pass",
     "tier": "cheap",
     "waiver": null
   },
   "gate-blocks-unproven": {
-    "at": "2026-06-19T01:32:54.822781+00:00",
+    "at": "2026-06-19T01:40:10.085856+00:00",
     "detail": null,
-    "fingerprint": "sha256:94385dc4e3c062e2d51ff592f82b08327e1e57487c4d1eedb68b49f26ec8e477",
+    "files": {
+      "caps/gate.py": "sha256:a40b196aa684032adac8acc25258835d084615ecb26b0e19dc2ea01d2982cc30",
+      "caps/project.py": "sha256:e7600fad36f15d0384408de98e6740d0ae9934f15ef140726d5aabf6808af823",
+      "caps/state.py": "sha256:ec93fa7823df70fc7232548b7ea72e1f784c4a269e8823e7bb0250eee2751e56",
+      "tests/unit/test_caps_gate.py": "sha256:8305715449c7869d9c74708f7f99dbb11fc71e386c99b7a620bd7e43ac7a3b90"
+    },
+    "fingerprint": "sha256:c6a9ec817889cf0a8ded9c3fbcb3c48c69b614f0ff9f5a636075b4a1125813f9",
     "result": "pass",
     "tier": "cheap",
     "waiver": null
   },
   "gate-fails-open-on-bad-input": {
-    "at": "2026-06-19T01:32:54.822781+00:00",
+    "at": "2026-06-19T01:40:10.085856+00:00",
     "detail": null,
-    "fingerprint": "sha256:af98e46e1dbf8fbeced96dd44f9b62722edef9d8c0619e03e412fb9597a11996",
+    "files": {
+      "caps/gate.py": "sha256:a40b196aa684032adac8acc25258835d084615ecb26b0e19dc2ea01d2982cc30",
+      "tests/unit/test_caps_cli.py": "sha256:7fa8f5af783d538faf67c6f8c5cca2c02c66135d307e5fe2129d4762d3b4c582"
+    },
+    "fingerprint": "sha256:d6b80d4d42223b19b6acdf38206baa4bcab49f03882cc857512e659148a27329",
     "result": "pass",
     "tier": "cheap",
     "waiver": null
@@ -82,23 +103,33 @@
   "gate-noop-without-manifest": {
     "at": "2026-06-17T04:20:50.832759+00:00",
     "detail": null,
+    "files": null,
     "fingerprint": "sha256:2396bfab06d4ad842bf62d24ceae2c7dc66eb27fdd07c9288b009535a263abe4",
     "result": "pass",
     "tier": "cheap",
     "waiver": null
   },
   "gate-self-clears": {
-    "at": "2026-06-19T01:32:54.822781+00:00",
+    "at": "2026-06-19T01:40:10.085856+00:00",
     "detail": null,
-    "fingerprint": "sha256:6d05ebdd39c0639fa3d33f0ef2db4b444e585fe3b7599567680378ea337ff6ce",
+    "files": {
+      "caps/gate.py": "sha256:a40b196aa684032adac8acc25258835d084615ecb26b0e19dc2ea01d2982cc30",
+      "tests/unit/test_caps_gate.py": "sha256:8305715449c7869d9c74708f7f99dbb11fc71e386c99b7a620bd7e43ac7a3b90"
+    },
+    "fingerprint": "sha256:8c7e9aad7bc69d0371b3dce336619d6a2c3c475753c530babec93fa521cb076c",
     "result": "pass",
     "tier": "cheap",
     "waiver": null
   },
   "init-produces-working-project": {
-    "at": "2026-06-19T01:32:54.822781+00:00",
+    "at": "2026-06-19T01:40:10.085856+00:00",
     "detail": null,
-    "fingerprint": "sha256:f497307bd3229e8b86ac90c935689ae88b7c30747b89eadec51e071543d20195",
+    "files": {
+      "caps/cli.py": "sha256:48fd9a583d472db5fabf54f291db692845b646a4055eedd98594dfb2a6d015b4",
+      "caps/initializer.py": "sha256:ce86b55616e0606e325492cc64dfb87af8337a9a95cf83ac22f6fa5ad36cc55e",
+      "tests/integration/test_caps_init_cli.py": "sha256:0d3be07527c573fce5f298ad5594975ef351024a5173223d4e0cb363c6c3ee6e"
+    },
+    "fingerprint": "sha256:c2c56df8ab0c28a75475388bf5055888a9a66797208cde311548ba4dbee11006",
     "result": "pass",
     "tier": "cheap",
     "waiver": null
@@ -106,23 +137,32 @@
   "install-hook-idempotent": {
     "at": "2026-06-17T04:20:50.832759+00:00",
     "detail": null,
+    "files": null,
     "fingerprint": "sha256:5bc7cba8230cd335aaccefcd7a2d1ea660b5fc52b4ff2629874a44bd80e08156",
     "result": "pass",
     "tier": "cheap",
     "waiver": null
   },
   "ledger-round-trips": {
-    "at": "2026-06-19T01:32:54.822781+00:00",
+    "at": "2026-06-19T01:40:10.085856+00:00",
     "detail": null,
-    "fingerprint": "sha256:43a719c888b70adf104e185a951b0cf1682b0c2739b25bb4a6d6a91d67216e9c",
+    "files": {
+      "caps/ledger.py": "sha256:7ea9f53d59f5bd0ec93879f3286213b5388a220fcd372df17dcbcf9d5e67a2a5",
+      "tests/unit/test_caps_ledger.py": "sha256:6d6caf59ab9869f9a061c06bcfda88e99e0dca4e631c6ed1062337017e1181d1"
+    },
+    "fingerprint": "sha256:1b3892d315a2be8f2aa240da4d05b8aa55a8d532b28401cc95c01e78c8acb05b",
     "result": "pass",
     "tier": "cheap",
     "waiver": null
   },
   "live-expiry-doesnt-block": {
-    "at": "2026-06-19T01:32:54.822781+00:00",
+    "at": "2026-06-19T01:40:10.085856+00:00",
     "detail": null,
-    "fingerprint": "sha256:ed9d2b2c8cc364c8c264ceaf84975ba9170390870149e26ce6cfda98963a145f",
+    "files": {
+      "caps/state.py": "sha256:ec93fa7823df70fc7232548b7ea72e1f784c4a269e8823e7bb0250eee2751e56",
+      "tests/unit/test_caps_gate.py": "sha256:8305715449c7869d9c74708f7f99dbb11fc71e386c99b7a620bd7e43ac7a3b90"
+    },
+    "fingerprint": "sha256:5a2edbdc402dc6cbe9cb34713afa38e2f13192bd81986f6d244cc0dff987b9d4",
     "result": "pass",
     "tier": "cheap",
     "waiver": null
@@ -130,6 +170,7 @@
   "manifest-rejects-bad-tier": {
     "at": "2026-06-17T04:20:50.832759+00:00",
     "detail": null,
+    "files": null,
     "fingerprint": "sha256:49bb6aca96d7863be94a7e157ca81e7d75f868e9478f245cdcaa3b35f1080ef3",
     "result": "pass",
     "tier": "cheap",
@@ -138,6 +179,7 @@
   "manifest-rejects-duplicate-ids": {
     "at": "2026-06-17T04:20:50.832759+00:00",
     "detail": null,
+    "files": null,
     "fingerprint": "sha256:49bb6aca96d7863be94a7e157ca81e7d75f868e9478f245cdcaa3b35f1080ef3",
     "result": "pass",
     "tier": "cheap",
@@ -146,6 +188,7 @@
   "runner-exit3-is-error": {
     "at": "2026-06-19T01:32:54.822781+00:00",
     "detail": null,
+    "files": null,
     "fingerprint": "sha256:c6bcbab70dcd9c5986f6be705cf92cf73cdc26f3b2b968132ae13c855242d6e1",
     "result": "pass",
     "tier": "cheap",
@@ -154,23 +197,29 @@
   "swallowed-exception-scan": {
     "at": "2026-06-17T04:20:50.832759+00:00",
     "detail": null,
+    "files": null,
     "fingerprint": "sha256:fb7084ed9af94c6258d3861c9b8ba0aeebb1a9806da7952913e7ecd9de32e7db",
     "result": "pass",
     "tier": "cheap",
     "waiver": null
   },
   "tests-green": {
-    "at": "2026-06-19T01:32:54.822781+00:00",
+    "at": "2026-06-19T01:40:10.085856+00:00",
     "detail": null,
-    "fingerprint": "sha256:1bd8bbe4a95c4e3cce691d8257f1ede5ad09479e1db305f476a124ca7fa9dcc2",
+    "files": null,
+    "fingerprint": "sha256:649cad988051b703ff7930ae3f5173202ef4646e3bc3063bcf19d309d2001b2b",
     "result": "pass",
     "tier": "cheap",
     "waiver": null
   },
   "verify-fails-nonzero": {
-    "at": "2026-06-19T01:32:54.822781+00:00",
+    "at": "2026-06-19T01:40:10.085856+00:00",
     "detail": null,
-    "fingerprint": "sha256:fc375947401d3b5d4c1fd1792a3bbd82008cb6a8f848516dfcae1c22b1561f08",
+    "files": {
+      "caps/cli.py": "sha256:48fd9a583d472db5fabf54f291db692845b646a4055eedd98594dfb2a6d015b4",
+      "tests/unit/test_caps_cli.py": "sha256:7fa8f5af783d538faf67c6f8c5cca2c02c66135d307e5fe2129d4762d3b4c582"
+    },
+    "fingerprint": "sha256:6acaef143d096276f66b904bf614dee24f348e43ee468be93d59c59599638eb1",
     "result": "pass",
     "tier": "cheap",
     "waiver": null
@@ -178,6 +227,7 @@
   "verify-flags-empty-output": {
     "at": "2026-06-17T04:20:50.832759+00:00",
     "detail": null,
+    "files": null,
     "fingerprint": "sha256:adadcf682b7f1193b41b82af2e6841173d352e73244b65bfc4bdf9e4c363d8ff",
     "result": "pass",
     "tier": "cheap",
