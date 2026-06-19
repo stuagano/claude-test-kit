@@ -127,9 +127,15 @@ A `check` is a `ctk`-based pytest test (or a shell command, exit 0 = proven) imp
 python -m caps status                    # read-only: proven / stale / failed / waived / never-proven
 python -m caps verify                    # run checks, record proof; non-zero exit if any fail
 python -m caps verify --capability <id>  # just one
+python -m caps verify --stale            # re-prove only what the gate would block on (one command)
 python -m caps ack <id> --reason "..."   # time-boxed waiver when it genuinely can't be proven now
 python -m caps add  ...                  # propose a new capability (see Discovery)
 ```
+
+When a check fails or errors, `verify` records a trimmed snippet of its output in
+the ledger alongside the result — so the failure can be read (and fixed) without
+re-running it. `--stale` is the inner-loop companion to the gate: the gate tells
+you *what* broke, `--stale` re-proves exactly that set in one shot.
 
 ## Freshness & the ledger
 
@@ -140,7 +146,7 @@ Proof is recorded in `.ctk/ledger.json` (committed, so CI / another machine sees
 
 ## Enforcement — the `Stop` hook
 
-`caps install-hook` registers a global `Stop` hook (backs up `settings.json` first). On every turn, in any project that has a `capabilities.yaml`, it blocks "done" when a capability is **never-proven, failed, or code-stale** — handing the reason back so it gets fixed. It is:
+`caps install-hook` registers a global `Stop` hook (backs up `settings.json` first). On every turn, in any project that has a `capabilities.yaml`, it blocks "done" when a capability is **never-proven, failed, or code-stale** — handing the reason back so it gets fixed. For a failed/errored capability it inlines the **recorded failure output** (assertion, file:line, message) so the fix needs no re-run, and points at a single `python -m caps verify --stale` to re-prove the whole blocking set. It is:
 
 - **read-only & fast** — it reads the ledger and hashes deps; it never runs checks on a turn boundary, and short-circuits instantly (no Python) in projects with no manifest;
 - **self-clearing** — blocks at most once per turn (`stop_hook_active`), never an infinite loop;

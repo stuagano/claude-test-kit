@@ -13,6 +13,7 @@ class LedgerEntry:
     tier: str                         # "cheap" | "live"
     fingerprint: Optional[str] = None
     waiver: Optional[dict] = None     # {"reason": str, "until": isostr}
+    detail: Optional[str] = None      # trimmed check output for a fail/error
 
 
 def load_ledger(path: Union[str, Path]) -> dict[str, LedgerEntry]:

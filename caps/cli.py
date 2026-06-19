@@ -12,7 +12,7 @@ from .ledger import load_ledger, LedgerEntry, save_ledger
 from .fingerprint import fingerprint
 from .freshness import is_fresh, waiver_active, parse_duration, FreshnessError
 from .runner import run_capability
-from .state import capability_state
+from .state import capability_state, BLOCK_STATES
 from .project import MANIFEST_NAME, LEDGER_REL, find_root
 from .gate import decide
 from .hookinstall import install_hook, uninstall_hook
@@ -52,16 +52,24 @@ def cmd_status(root: Path, now: datetime) -> int:
     return 0
 
 
-def cmd_verify(root: Path, now: datetime, only: Optional[str]) -> int:
+def cmd_verify(root: Path, now: datetime, only: Optional[str],
+               stale: bool = False) -> int:
     caps = load_manifest(root / MANIFEST_NAME)
     _print_warnings(caps)
+    ledger = load_ledger(root / LEDGER_REL)
     if only is not None:
         caps = [c for c in caps if c.id == only]
         if not caps:
             print(f"error: no capability with id {only!r}", file=sys.stderr)
             return 2
+    elif stale:
+        # Re-prove exactly the set the Stop-hook gate would block on, in one go.
+        caps = [c for c in caps
+                if capability_state(c, ledger.get(c.id), root, now) in BLOCK_STATES]
+        if not caps:
+            print("nothing stale — all capabilities are proven & fresh (or waived)")
+            return 0
 
-    ledger = load_ledger(root / LEDGER_REL)
     worst_ok = True
     for cap in caps:
         # An active waiver suppresses the check during a bare verify; the
@@ -69,17 +77,20 @@ def cmd_verify(root: Path, now: datetime, only: Optional[str]) -> int:
         if only is None and waiver_active(ledger.get(cap.id), now):
             print(f"{cap.id}: skipped (waived)")
             continue
-        result = run_capability(cap, root)
+        result, detail = run_capability(cap, root)
         ledger[cap.id] = LedgerEntry(
             result=result,
             at=now.isoformat(),
             tier=cap.tier,
             fingerprint=fingerprint(cap, root) if cap.freshness == "code" else None,
             waiver=None,
+            detail=detail if result != "pass" else None,
         )
         print(f"{cap.id}: {result}")
         if result != "pass":
             worst_ok = False
+            if detail:
+                print(detail, file=sys.stderr)
     save_ledger(root / LEDGER_REL, ledger)
     return 0 if worst_ok else 1
 
@@ -146,8 +157,11 @@ def main(argv=None, cwd: Optional[str] = None) -> int:
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("status", help="show capability status (read-only)")
     v = sub.add_parser("verify", help="run checks and record proof")
-    v.add_argument("--capability", dest="only", default=None,
-                   help="verify a single capability by id")
+    vsel = v.add_mutually_exclusive_group()
+    vsel.add_argument("--capability", dest="only", default=None,
+                      help="verify a single capability by id")
+    vsel.add_argument("--stale", action="store_true",
+                      help="re-prove only the capabilities the gate would block on")
     a = sub.add_parser("ack", help="record a time-boxed waiver for a capability")
     a.add_argument("capability", help="capability id to waive")
     a.add_argument("--reason", required=True, help="why it can't be proven now")
@@ -234,7 +248,7 @@ def main(argv=None, cwd: Optional[str] = None) -> int:
         if args.command == "status":
             return cmd_status(root, now)
         if args.command == "verify":
-            return cmd_verify(root, now, args.only)
+            return cmd_verify(root, now, args.only, args.stale)
         if args.command == "ack":
             return cmd_ack(root, now, args.capability, args.reason, args.for_)
     except (ManifestError, FreshnessError) as e:

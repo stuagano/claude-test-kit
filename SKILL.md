@@ -105,7 +105,11 @@ the DB" when we actually can't.
    treating work as done. **"Done" means every capability is green and fresh —
    not that the code ran.** If `verify` is red/stale, that blocks "done"; fix it
    or, if it genuinely can't be proven right now (offline, no infra), record an
-   explicit waiver: `python -m caps ack <id> --reason "..."`.
+   explicit waiver: `python -m caps ack <id> --reason "..."`. When several go
+   stale at once (you touched shared deps), `python -m caps verify --stale`
+   re-proves exactly the blocking set in one command. A failed check's output is
+   recorded in the ledger and echoed back by the gate, so you can read *why* it
+   failed without re-running it.
 2. **If you do capability-shaped work and there's no matching check** — anything
    that writes to a DB, deploys, creates a table/file/endpoint, etc. — **propose
    a capability** rather than silently moving on. Surface a concrete proposal

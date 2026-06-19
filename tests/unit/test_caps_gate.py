@@ -53,6 +53,23 @@ def test_never_proven_blocks(tmp_path):
 
 
 @pytest.mark.unit
+def test_block_reason_includes_recorded_failure_detail(tmp_path):
+    # A previously-recorded failure detail must surface in the block message so
+    # the failure can be fixed without re-running the check.
+    _project(tmp_path, CHEAP)
+    from caps.ledger import LedgerEntry, save_ledger
+    from caps.project import LEDGER_REL
+    save_ledger(tmp_path / LEDGER_REL, {"c1": LedgerEntry(
+        result="fail", at=NOW.isoformat(), tier="cheap",
+        detail="E   assert False\ntest_x.py:1: AssertionError")})
+    d = decide(_payload(tmp_path), NOW)
+    assert d.block is True
+    assert "last failure" in d.reason
+    assert "AssertionError" in d.reason
+    assert "--stale" in d.reason  # single command to re-prove the blocking set
+
+
+@pytest.mark.unit
 def test_proven_fresh_allows(tmp_path):
     _project(tmp_path, CHEAP)
     (tmp_path / "checks" / "test_x.py").write_text("def test_x(): pass\n")

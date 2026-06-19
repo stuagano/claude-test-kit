@@ -81,7 +81,86 @@ def test_verify_records_fail_and_exits_nonzero(tmp_path):
     rc = main(["verify"], cwd=str(p))
     assert rc == 1
     from caps.ledger import load_ledger
-    assert load_ledger(p / ".ctk" / "ledger.json")["bad-cap"].result == "fail"
+    entry = load_ledger(p / ".ctk" / "ledger.json")["bad-cap"]
+    assert entry.result == "fail"
+    # The failure output is persisted so the gate can show why without a re-run.
+    assert entry.detail and "test_bad" in entry.detail
+
+
+@pytest.mark.unit
+def test_verify_pass_records_no_detail(tmp_path):
+    p = _project(tmp_path, """
+        capabilities:
+          - id: ok-cap
+            description: x
+            given: g
+            when: w
+            then: t
+            tier: cheap
+            deps: []
+            check: checks/test_ok.py::test_ok
+    """)
+    (p / "checks" / "test_ok.py").write_text("def test_ok():\n    assert True\n")
+    main(["verify"], cwd=str(p))
+    from caps.ledger import load_ledger
+    assert load_ledger(p / ".ctk" / "ledger.json")["ok-cap"].detail is None
+
+
+@pytest.mark.unit
+def test_verify_stale_reproves_only_blocking_set(tmp_path):
+    p = _project(tmp_path, """
+        capabilities:
+          - id: a
+            description: x
+            given: g
+            when: w
+            then: t
+            tier: cheap
+            deps: []
+            check: checks/test_a.py::test_a
+          - id: b
+            description: x
+            given: g
+            when: w
+            then: t
+            tier: cheap
+            deps: []
+            check: checks/test_b.py::test_b
+    """)
+    (p / "checks" / "test_a.py").write_text("def test_a():\n    assert True\n")
+    (p / "checks" / "test_b.py").write_text("def test_b():\n    assert True\n")
+    from caps.ledger import load_ledger
+    # Prove 'a' so it is fresh; 'b' stays never-proven (i.e. stale to the gate).
+    main(["verify", "--capability", "a"], cwd=str(p))
+    a_at = load_ledger(p / ".ctk" / "ledger.json")["a"].at
+
+    rc = main(["verify", "--stale"], cwd=str(p))
+    assert rc == 0
+    ledger = load_ledger(p / ".ctk" / "ledger.json")
+    # 'b' got proven; 'a' was left untouched (its timestamp did not move).
+    assert ledger["b"].result == "pass"
+    assert ledger["a"].at == a_at
+
+
+@pytest.mark.unit
+def test_verify_stale_when_nothing_stale_is_a_noop(tmp_path, capsys):
+    p = _project(tmp_path, """
+        capabilities:
+          - id: a
+            description: x
+            given: g
+            when: w
+            then: t
+            tier: cheap
+            deps: []
+            check: checks/test_a.py::test_a
+    """)
+    (p / "checks" / "test_a.py").write_text("def test_a():\n    assert True\n")
+    main(["verify"], cwd=str(p))            # everything proven & fresh
+    rc = main(["verify", "--stale"], cwd=str(p))
+    out = capsys.readouterr().out
+    assert rc == 0
+    assert "nothing stale" in out.lower()
 
 
 @pytest.mark.unit
