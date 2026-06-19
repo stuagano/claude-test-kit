@@ -235,3 +235,14 @@ capabilities:
     - caps/doctor.py
     - caps/cli.py
     check: tests/unit/test_caps_doctor.py::test_missing_check_file_is_a_failure
+  - id: verify-records-timing
+    description: verify records each check's wall-clock duration in the ledger
+    given: a capability whose check runs
+    when: caps verify executes it
+    then: the ledger entry carries a duration so slow/flaky checks are visible
+    tier: cheap
+    deps:
+    - caps/cli.py
+    - caps/runner.py
+    - caps/ledger.py
+    check: tests/unit/test_caps_cli.py::test_verify_records_duration

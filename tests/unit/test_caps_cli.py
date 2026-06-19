@@ -174,6 +174,60 @@ def test_verify_records_fail_and_exits_nonzero(tmp_path):
 
 
 @pytest.mark.unit
+def test_slowdown_note_fires_only_on_real_regression():
+    from caps.cli import _slowdown_note
+    # Doubled and grew by >= floor -> flagged.
+    assert _slowdown_note("c", 1.0, 3.0) is not None
+    # Minor jitter -> no note.
+    assert _slowdown_note("c", 1.0, 1.2) is None
+    # Doubled but absolute jump below the floor (sub-second) -> no note.
+    assert _slowdown_note("c", 0.001, 0.3) is None
+    # No prior timing -> nothing to compare.
+    assert _slowdown_note("c", None, 5.0) is None
+
+
+@pytest.mark.unit
+def test_verify_records_duration(tmp_path):
+    p = _project(tmp_path, """
+        capabilities:
+          - id: timed
+            description: x
+            given: g
+            when: w
+            then: t
+            tier: cheap
+            deps: []
+            check: checks/test_ok.py::test_ok
+    """)
+    (p / "checks" / "test_ok.py").write_text("def test_ok():\n    assert True\n")
+    main(["verify"], cwd=str(p))
+    from caps.ledger import load_ledger
+    entry = load_ledger(p / ".ctk" / "ledger.json")["timed"]
+    assert entry.duration is not None and entry.duration >= 0.0
+
+
+@pytest.mark.unit
+def test_status_json_includes_duration(tmp_path, capsys):
+    p = _project(tmp_path, """
+        capabilities:
+          - id: timed
+            description: x
+            given: g
+            when: w
+            then: t
+            tier: cheap
+            deps: []
+            check: checks/test_ok.py::test_ok
+    """)
+    (p / "checks" / "test_ok.py").write_text("def test_ok():\n    assert True\n")
+    main(["verify"], cwd=str(p))
+    capsys.readouterr()
+    main(["status", "--json"], cwd=str(p))
+    doc = _json.loads(capsys.readouterr().out)
+    assert "duration" in doc["capabilities"][0]
+
+
+@pytest.mark.unit
 def test_verify_records_per_file_map_for_narrow_deps(tmp_path):
     p = _project(tmp_path, """
         capabilities:

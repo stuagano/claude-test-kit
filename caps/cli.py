@@ -36,6 +36,23 @@ _GLYPH = {
 }
 
 
+# A check counts as "slowed down" only when it both at least doubled AND grew by
+# a meaningful absolute amount — so sub-second jitter never cries wolf.
+SLOW_REGRESSION_FACTOR = 2.0
+SLOW_REGRESSION_FLOOR = 0.5  # seconds
+
+
+def _slowdown_note(cap_id: str, prev: Optional[float], new: float) -> Optional[str]:
+    """Flag a real timing regression against the previously-recorded duration."""
+    if prev and new >= prev * SLOW_REGRESSION_FACTOR and (new - prev) >= SLOW_REGRESSION_FLOOR:
+        return f"{cap_id}: slower — {prev:.2f}s -> {new:.2f}s (check timing regressed)"
+    return None
+
+
+def _fmt_duration(seconds: Optional[float]) -> str:
+    return "" if seconds is None else f" ({seconds:.2f}s)"
+
+
 def _print_warnings(caps) -> None:
     for cap in caps:
         for w in cap.warnings:
@@ -48,6 +65,8 @@ def _capability_report(cap, entry, state, root) -> dict:
     rep = {"id": cap.id, "state": state, "tier": cap.tier, "then": cap.then}
     if entry is not None:
         rep["at"] = entry.at
+        if entry.duration is not None:
+            rep["duration"] = entry.duration
     if cap.warnings:
         rep["warnings"] = list(cap.warnings)
     if state in ("fail", "error") and entry is not None and entry.detail:
@@ -87,12 +106,12 @@ def cmd_status(root: Path, now: datetime, as_json: bool = False) -> int:
     _print_warnings(caps)
     for cap, entry, state, rep in reports:
         label = _DISPLAY[state]
-        line = f"[{_GLYPH.get(label, '?'):5}] {cap.id:30} {label}"
+        line = f"[{_GLYPH.get(label, '?'):5}] {cap.id:30} {label:12}{_fmt_duration(rep.get('duration'))}"
         if "changed" in rep:
             changed = rep["changed"]
             more = f", +{len(changed) - 3}" if len(changed) > 3 else ""
             line += f"  (changed: {', '.join(changed[:3])}{more})"
-        print(line)
+        print(line.rstrip())
     return 0
 
 
@@ -121,7 +140,8 @@ def cmd_verify(root: Path, now: datetime, only: Optional[str],
         if only is None and waiver_active(ledger.get(cap.id), now):
             print(f"{cap.id}: skipped (waived)")
             continue
-        result, detail = run_capability(cap, root)
+        prev = ledger.get(cap.id)
+        result, detail, duration = run_capability(cap, root)
         fmap = None
         if cap.freshness == "code":
             fmap = file_fingerprints(cap, root)
@@ -135,8 +155,12 @@ def cmd_verify(root: Path, now: datetime, only: Optional[str],
             waiver=None,
             detail=detail if result != "pass" else None,
             files=fmap,
+            duration=round(duration, 3),
         )
-        print(f"{cap.id}: {result}")
+        print(f"{cap.id}: {result}{_fmt_duration(duration)}")
+        slow = _slowdown_note(cap.id, prev.duration if prev else None, duration)
+        if slow:
+            print(slow, file=sys.stderr)
         if result != "pass":
             worst_ok = False
             if detail:

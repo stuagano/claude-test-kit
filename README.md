@@ -134,7 +134,9 @@ python -m caps ack <id> --reason "..."   # time-boxed waiver when it genuinely c
 python -m caps add  ...                  # propose a new capability (see Discovery)
 ```
 
-`status --json` is the harness's read path — a consumer gets `{capabilities, summary, blocking, ok}` (each cap carries its `state`, plus `detail`/`changed`/`waiver` evidence) without scraping text. `doctor` catches the silent setup gaps that make a green run a lie: an unparseable manifest, a `check` whose file doesn't exist, the Stop hook never installed. It exits non-zero only on hard problems (missing/invalid), so it's safe as a setup gate.
+`status --json` is the harness's read path — a consumer gets `{capabilities, summary, blocking, ok}` (each cap carries its `state`, plus `detail`/`changed`/`waiver`/`duration` evidence) without scraping text. `doctor` catches the silent setup gaps that make a green run a lie: an unparseable manifest, a `check` whose file doesn't exist, the Stop hook never installed. It exits non-zero only on hard problems (missing/invalid), so it's safe as a setup gate.
+
+Every `verify` records each check's wall-clock **duration** in the ledger (shown by `status` and `--json`), and flags a check whose runtime *regressed* — at least doubled and grew by ≥0.5s vs the last run — so a check that suddenly got slow, or a flaky live capability, is visible instead of silently dragging the loop.
 
 When a check fails or errors, `verify` records a trimmed snippet of its output in
 the ledger alongside the result — so the failure can be read (and fixed) without
