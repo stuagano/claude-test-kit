@@ -246,3 +246,14 @@ capabilities:
     - caps/runner.py
     - caps/ledger.py
     check: tests/unit/test_caps_cli.py::test_verify_records_duration
+  - id: ponytail-hook-installs
+    description: caps install-ponytail registers a SessionStart hook that injects the
+      lazy-senior-dev posture
+    given: a settings.json
+    when: caps install-ponytail runs
+    then: a SessionStart hook tagged caps-ponytail is registered with the startup matcher
+    tier: cheap
+    deps:
+    - caps/hookinstall.py
+    - caps/ponytail.py
+    check: tests/unit/test_caps_hookinstall.py::test_install_ponytail_session_start_hook_with_matcher

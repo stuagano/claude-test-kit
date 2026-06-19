@@ -2,7 +2,7 @@ import json
 from pathlib import Path
 
 import pytest
-from caps.hookinstall import install_hook, uninstall_hook, HOOK_TAG
+from caps.hookinstall import install_hook, uninstall_hook, HOOK_TAG, PONYTAIL_TAG
 
 
 @pytest.mark.unit
@@ -52,3 +52,32 @@ def test_uninstall_removes_only_ours(tmp_path):
     uninstall_hook(settings)
     cmds = [h["hooks"][0]["command"] for h in json.loads(settings.read_text())["hooks"]["Stop"]]
     assert cmds == ["/other.sh"]
+
+
+@pytest.mark.unit
+def test_install_ponytail_session_start_hook_with_matcher(tmp_path):
+    settings = tmp_path / "settings.json"
+    settings.write_text("{}")
+    install_hook(settings, command="/x/caps-ponytail.sh",
+                 event="SessionStart", tag=PONYTAIL_TAG,
+                 matcher="startup|resume|clear|compact")
+    starts = json.loads(settings.read_text())["hooks"]["SessionStart"]
+    ours = [h for h in starts if h.get("_caps") == PONYTAIL_TAG]
+    assert len(ours) == 1
+    assert ours[0]["matcher"] == "startup|resume|clear|compact"
+    assert ours[0]["hooks"][0]["command"] == "/x/caps-ponytail.sh"
+
+
+@pytest.mark.unit
+def test_stop_gate_and_ponytail_coexist_and_uninstall_independently(tmp_path):
+    settings = tmp_path / "settings.json"
+    settings.write_text("{}")
+    install_hook(settings, command="/x/caps-stop-gate.sh")
+    install_hook(settings, command="/x/caps-ponytail.sh",
+                 event="SessionStart", tag=PONYTAIL_TAG,
+                 matcher="startup")
+    # Removing the posture hook must leave the Stop gate untouched.
+    uninstall_hook(settings, event="SessionStart", tag=PONYTAIL_TAG)
+    data = json.loads(settings.read_text())
+    assert data["hooks"]["SessionStart"] == []
+    assert any(h.get("_caps") == HOOK_TAG for h in data["hooks"]["Stop"])

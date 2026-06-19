@@ -15,7 +15,8 @@ from .runner import run_capability
 from .state import capability_state, BLOCK_STATES
 from .project import MANIFEST_NAME, LEDGER_REL, find_root
 from .gate import decide
-from .hookinstall import install_hook, uninstall_hook
+from .hookinstall import install_hook, uninstall_hook, PONYTAIL_TAG
+from .ponytail import ponytail_instructions
 from .manifest_edit import add_capability, ManifestEditError
 from .initializer import init_project, kit_root
 from .doctor import diagnose, exit_code, Finding, OK, WARN, FAIL
@@ -279,6 +280,15 @@ def main(argv=None, cwd: Optional[str] = None) -> int:
     uh = sub.add_parser("uninstall-hook", help="remove the Stop-hook gate from settings.json")
     uh.add_argument("--settings", default=str(Path.home() / ".claude" / "settings.json"))
 
+    sub.add_parser("ponytail", help="print the 'lazy senior dev' posture (what the SessionStart hook injects)")
+    ip = sub.add_parser("install-ponytail",
+                        help="register a SessionStart hook that injects the ponytail posture")
+    ip.add_argument("--settings", default=str(Path.home() / ".claude" / "settings.json"))
+    ip.add_argument("--command", dest="hook_command", default=None,
+                    help="hook command (defaults to this kit's bin/caps-ponytail.sh)")
+    up = sub.add_parser("uninstall-ponytail", help="remove the ponytail SessionStart hook")
+    up.add_argument("--settings", default=str(Path.home() / ".claude" / "settings.json"))
+
     ad = sub.add_parser("add", help="add a capability to the manifest (never-proven)")
     ad.add_argument("--id", required=True)
     ad.add_argument("--description", required=True)
@@ -318,6 +328,25 @@ def main(argv=None, cwd: Optional[str] = None) -> int:
     if args.command == "uninstall-hook":
         uninstall_hook(args.settings)
         print(f"removed Stop-hook gate from {args.settings}")
+        return 0
+    if args.command == "ponytail":
+        print(ponytail_instructions())
+        return 0
+    if args.command == "install-ponytail":
+        kit = Path(__file__).resolve().parent.parent
+        cmd = args.hook_command or str(kit / "bin" / "caps-ponytail.sh")
+        venv_py = kit / ".venv" / "bin" / "python"
+        if not venv_py.exists():
+            print(f"warning: {venv_py} not found — run ./run_tests.sh once so the "
+                  f"hook has an interpreter (posture stays silent until then)", file=sys.stderr)
+        install_hook(args.settings, command=cmd,
+                     event="SessionStart", tag=PONYTAIL_TAG,
+                     matcher="startup|resume|clear|compact")
+        print(f"installed ponytail SessionStart hook -> {args.settings}")
+        return 0
+    if args.command == "uninstall-ponytail":
+        uninstall_hook(args.settings, event="SessionStart", tag=PONYTAIL_TAG)
+        print(f"removed ponytail SessionStart hook from {args.settings}")
         return 0
 
     if args.command == "add":
