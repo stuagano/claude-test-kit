@@ -50,6 +50,7 @@ def _slowdown_note(cap_id: str, prev: Optional[float], new: float) -> Optional[s
 
 
 def _fmt_duration(seconds: Optional[float]) -> str:
+    """Render a recorded check duration as a ` (1.23s)` suffix, or "" if unknown."""
     return "" if seconds is None else f" ({seconds:.2f}s)"
 
 
@@ -210,6 +211,8 @@ _DOCTOR_GLYPH = {OK: " OK ", WARN: "WARN", FAIL: "FAIL"}
 
 
 def cmd_doctor(root: Path, now: datetime, settings_path, as_json: bool = False) -> int:
+    """Render `caps doctor`: print (or JSON-emit) the setup findings and return a
+    non-zero exit code if any are hard failures."""
     findings = diagnose(root, now, settings_path)
     if as_json:
         print(json.dumps({

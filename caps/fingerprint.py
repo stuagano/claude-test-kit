@@ -56,6 +56,8 @@ def _resolve_rels(capability: Capability, root: Path) -> list[str]:
 
 
 def _hash_file(p: Path) -> str:
+    """A `sha256:` digest of a file's bytes, or of a `<missing>` marker when the
+    file is absent (so deletion changes the hash)."""
     h = hashlib.sha256()
     h.update(p.read_bytes() if p.is_file() else b"<missing>")
     return "sha256:" + h.hexdigest()
