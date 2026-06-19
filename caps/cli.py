@@ -18,6 +18,7 @@ from .gate import decide
 from .hookinstall import install_hook, uninstall_hook
 from .manifest_edit import add_capability, ManifestEditError
 from .initializer import init_project, kit_root
+from .doctor import diagnose, exit_code, Finding, OK, WARN, FAIL
 
 
 _DISPLAY = {
@@ -41,20 +42,56 @@ def _print_warnings(caps) -> None:
             print(f"warning: {cap.id}: {w}", file=sys.stderr)
 
 
-def cmd_status(root: Path, now: datetime) -> int:
+def _capability_report(cap, entry, state, root) -> dict:
+    """One capability's machine-readable status: always id/state/tier/then, plus
+    the evidence relevant to that state (detail, changed deps, waiver, at)."""
+    rep = {"id": cap.id, "state": state, "tier": cap.tier, "then": cap.then}
+    if entry is not None:
+        rep["at"] = entry.at
+    if cap.warnings:
+        rep["warnings"] = list(cap.warnings)
+    if state in ("fail", "error") and entry is not None and entry.detail:
+        rep["detail"] = entry.detail
+    if state == "code-stale":
+        ch = changed_deps(cap, getattr(entry, "files", None), root)
+        if ch:
+            rep["changed"] = ch
+    if state == "waived" and entry is not None and entry.waiver:
+        rep["waiver"] = entry.waiver
+    return rep
+
+
+def cmd_status(root: Path, now: datetime, as_json: bool = False) -> int:
     caps = load_manifest(root / MANIFEST_NAME)
-    _print_warnings(caps)
     ledger = load_ledger(root / LEDGER_REL)
+    reports = []
     for cap in caps:
         entry = ledger.get(cap.id)
         state = capability_state(cap, entry, root, now)
+        reports.append((cap, entry, state, _capability_report(cap, entry, state, root)))
+
+    if as_json:
+        summary: dict = {}
+        for _, _, state, _ in reports:
+            summary[state] = summary.get(state, 0) + 1
+        blocking = [r["id"] for *_, r in reports if r["state"] in BLOCK_STATES]
+        print(json.dumps({
+            "root": str(root),
+            "capabilities": [r for *_, r in reports],
+            "summary": summary,
+            "blocking": blocking,
+            "ok": not blocking,
+        }, indent=2))
+        return 0
+
+    _print_warnings(caps)
+    for cap, entry, state, rep in reports:
         label = _DISPLAY[state]
         line = f"[{_GLYPH.get(label, '?'):5}] {cap.id:30} {label}"
-        if state == "code-stale":
-            changed = changed_deps(cap, getattr(entry, "files", None), root)
-            if changed:
-                more = f", +{len(changed) - 3}" if len(changed) > 3 else ""
-                line += f"  (changed: {', '.join(changed[:3])}{more})"
+        if "changed" in rep:
+            changed = rep["changed"]
+            more = f", +{len(changed) - 3}" if len(changed) > 3 else ""
+            line += f"  (changed: {', '.join(changed[:3])}{more})"
         print(line)
     return 0
 
@@ -145,6 +182,27 @@ def cmd_gate(stdin_text: str, now: datetime) -> int:
     return 0
 
 
+_DOCTOR_GLYPH = {OK: " OK ", WARN: "WARN", FAIL: "FAIL"}
+
+
+def cmd_doctor(root: Path, now: datetime, settings_path, as_json: bool = False) -> int:
+    findings = diagnose(root, now, settings_path)
+    if as_json:
+        print(json.dumps({
+            "root": str(root),
+            "findings": [{"level": f.level, "message": f.message} for f in findings],
+            "ok": exit_code(findings) == 0,
+        }, indent=2))
+        return exit_code(findings)
+    print(f"caps doctor — {root}")
+    for f in findings:
+        print(f"[{_DOCTOR_GLYPH[f.level]}] {f.message}")
+    n_fail = sum(f.level == FAIL for f in findings)
+    n_warn = sum(f.level == WARN for f in findings)
+    print(f"{n_fail} error(s), {n_warn} warning(s)")
+    return exit_code(findings)
+
+
 def cmd_init(target: str, force: bool, install_deps: bool) -> int:
     try:
         results = init_project(target, kit=kit_root(), force=force, install_deps=install_deps)
@@ -168,7 +226,9 @@ def cmd_init(target: str, force: bool, install_deps: bool) -> int:
 def main(argv=None, cwd: Optional[str] = None) -> int:
     parser = argparse.ArgumentParser(prog="caps")
     sub = parser.add_subparsers(dest="command", required=True)
-    sub.add_parser("status", help="show capability status (read-only)")
+    st = sub.add_parser("status", help="show capability status (read-only)")
+    st.add_argument("--json", action="store_true",
+                    help="emit machine-readable JSON (state, detail, changed deps, blocking set)")
     v = sub.add_parser("verify", help="run checks and record proof")
     vsel = v.add_mutually_exclusive_group()
     vsel.add_argument("--capability", dest="only", default=None,
@@ -181,6 +241,10 @@ def main(argv=None, cwd: Optional[str] = None) -> int:
     a.add_argument("--for", dest="for_", default="24h",
                    help="waiver duration, e.g. 24h (default), 2d, 30m")
     sub.add_parser("gate", help="Stop-hook gate: read hook JSON on stdin, emit allow/block")
+    doc = sub.add_parser("doctor", help="diagnose project setup (manifest, checks, ledger, hook)")
+    doc.add_argument("--settings", default=None,
+                     help="settings.json to check for the Stop hook (default: ~/.claude/settings.json)")
+    doc.add_argument("--json", action="store_true", help="emit machine-readable JSON")
     ih = sub.add_parser("install-hook", help="register the Stop-hook gate in settings.json")
     ih.add_argument("--settings", default=str(Path.home() / ".claude" / "settings.json"))
     ih.add_argument("--command", dest="hook_command", default=None,
@@ -259,11 +323,13 @@ def main(argv=None, cwd: Optional[str] = None) -> int:
 
     try:
         if args.command == "status":
-            return cmd_status(root, now)
+            return cmd_status(root, now, args.json)
         if args.command == "verify":
             return cmd_verify(root, now, args.only, args.stale)
         if args.command == "ack":
             return cmd_ack(root, now, args.capability, args.reason, args.for_)
+        if args.command == "doctor":
+            return cmd_doctor(root, now, args.settings, args.json)
     except (ManifestError, FreshnessError) as e:
         print(f"error: {e}", file=sys.stderr)
         return 2

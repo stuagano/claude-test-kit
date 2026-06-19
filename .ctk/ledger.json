@@ -35,6 +35,19 @@
     "tier": "cheap",
     "waiver": null
   },
+  "doctor-flags-broken-setup": {
+    "at": "2026-06-19T03:25:14.974243+00:00",
+    "detail": null,
+    "files": {
+      "caps/cli.py": "sha256:20907f65511d1191bd90e558a18f4518ce87e2ec86222acfcf3ab01c559a1e99",
+      "caps/doctor.py": "sha256:777fdc3b09a1da4f134bb1a19428f185c343300e6df40e1eeeb821af9d408578",
+      "tests/unit/test_caps_doctor.py": "sha256:08e4591f3e209d9c2ef4cbb684c9f32d6691edb1ea7f55bfa983d994cd55e5eb"
+    },
+    "fingerprint": "sha256:f458036921a292de1479635d9b998a91850dcdeb81d122e3b451cf72417a7483",
+    "result": "pass",
+    "tier": "cheap",
+    "waiver": null
+  },
   "error-log-guard-fails-test": {
     "at": "2026-06-17T04:20:50.832759+00:00",
     "detail": null,
@@ -89,13 +102,13 @@
     "waiver": null
   },
   "gate-fails-open-on-bad-input": {
-    "at": "2026-06-19T01:40:10.085856+00:00",
+    "at": "2026-06-19T03:25:14.974243+00:00",
     "detail": null,
     "files": {
       "caps/gate.py": "sha256:a40b196aa684032adac8acc25258835d084615ecb26b0e19dc2ea01d2982cc30",
-      "tests/unit/test_caps_cli.py": "sha256:7fa8f5af783d538faf67c6f8c5cca2c02c66135d307e5fe2129d4762d3b4c582"
+      "tests/unit/test_caps_cli.py": "sha256:35e150e7a1cbb2b77580e92d7aac0df2766a09fa6f4841fcaa8701330cee111b"
     },
-    "fingerprint": "sha256:d6b80d4d42223b19b6acdf38206baa4bcab49f03882cc857512e659148a27329",
+    "fingerprint": "sha256:3ab85781ad4b9e4f8fdde4155eee1525378d2f89129309a4b383cb0e90854e51",
     "result": "pass",
     "tier": "cheap",
     "waiver": null
@@ -122,14 +135,14 @@
     "waiver": null
   },
   "init-produces-working-project": {
-    "at": "2026-06-19T01:40:10.085856+00:00",
+    "at": "2026-06-19T03:25:14.974243+00:00",
     "detail": null,
     "files": {
-      "caps/cli.py": "sha256:48fd9a583d472db5fabf54f291db692845b646a4055eedd98594dfb2a6d015b4",
+      "caps/cli.py": "sha256:20907f65511d1191bd90e558a18f4518ce87e2ec86222acfcf3ab01c559a1e99",
       "caps/initializer.py": "sha256:ce86b55616e0606e325492cc64dfb87af8337a9a95cf83ac22f6fa5ad36cc55e",
       "tests/integration/test_caps_init_cli.py": "sha256:0d3be07527c573fce5f298ad5594975ef351024a5173223d4e0cb363c6c3ee6e"
     },
-    "fingerprint": "sha256:c2c56df8ab0c28a75475388bf5055888a9a66797208cde311548ba4dbee11006",
+    "fingerprint": "sha256:349ce24b96a41425ca458940b2cf64011370f02047ac6c6c50072779d1b20765",
     "result": "pass",
     "tier": "cheap",
     "waiver": null
@@ -194,6 +207,18 @@
     "tier": "cheap",
     "waiver": null
   },
+  "status-json-is-machine-readable": {
+    "at": "2026-06-19T03:25:14.974243+00:00",
+    "detail": null,
+    "files": {
+      "caps/cli.py": "sha256:20907f65511d1191bd90e558a18f4518ce87e2ec86222acfcf3ab01c559a1e99",
+      "tests/unit/test_caps_cli.py": "sha256:35e150e7a1cbb2b77580e92d7aac0df2766a09fa6f4841fcaa8701330cee111b"
+    },
+    "fingerprint": "sha256:299aa996f0e002429aa6d93848d1e5a0b08e34ba7476cf4870a5d7e1310bdde6",
+    "result": "pass",
+    "tier": "cheap",
+    "waiver": null
+  },
   "swallowed-exception-scan": {
     "at": "2026-06-17T04:20:50.832759+00:00",
     "detail": null,
@@ -204,22 +229,22 @@
     "waiver": null
   },
   "tests-green": {
-    "at": "2026-06-19T01:40:10.085856+00:00",
+    "at": "2026-06-19T03:25:14.974243+00:00",
     "detail": null,
     "files": null,
-    "fingerprint": "sha256:649cad988051b703ff7930ae3f5173202ef4646e3bc3063bcf19d309d2001b2b",
+    "fingerprint": "sha256:66d7ff41c89f252a637b7eac9c0388510828cfed40e2e0d78b91027571b8e0eb",
     "result": "pass",
     "tier": "cheap",
     "waiver": null
   },
   "verify-fails-nonzero": {
-    "at": "2026-06-19T01:40:10.085856+00:00",
+    "at": "2026-06-19T03:25:14.974243+00:00",
     "detail": null,
     "files": {
-      "caps/cli.py": "sha256:48fd9a583d472db5fabf54f291db692845b646a4055eedd98594dfb2a6d015b4",
-      "tests/unit/test_caps_cli.py": "sha256:7fa8f5af783d538faf67c6f8c5cca2c02c66135d307e5fe2129d4762d3b4c582"
+      "caps/cli.py": "sha256:20907f65511d1191bd90e558a18f4518ce87e2ec86222acfcf3ab01c559a1e99",
+      "tests/unit/test_caps_cli.py": "sha256:35e150e7a1cbb2b77580e92d7aac0df2766a09fa6f4841fcaa8701330cee111b"
     },
-    "fingerprint": "sha256:6acaef143d096276f66b904bf614dee24f348e43ee468be93d59c59599638eb1",
+    "fingerprint": "sha256:299aa996f0e002429aa6d93848d1e5a0b08e34ba7476cf4870a5d7e1310bdde6",
     "result": "pass",
     "tier": "cheap",
     "waiver": null

@@ -109,7 +109,11 @@ the DB" when we actually can't.
    stale at once (you touched shared deps), `python -m caps verify --stale`
    re-proves exactly the blocking set in one command. A failed check's output is
    recorded in the ledger and echoed back by the gate, so you can read *why* it
-   failed without re-running it.
+   failed without re-running it. Use `python -m caps status --json` when you need
+   to branch on state programmatically. When first wiring up (or debugging "the
+   gate isn't doing anything"), run `python -m caps doctor` — it flags an invalid
+   manifest, a check file that doesn't exist, or a Stop hook that was never
+   installed, instead of letting a green run quietly mean nothing.
 2. **If you do capability-shaped work and there's no matching check** — anything
    that writes to a DB, deploys, creates a table/file/endpoint, etc. — **propose
    a capability** rather than silently moving on. Surface a concrete proposal

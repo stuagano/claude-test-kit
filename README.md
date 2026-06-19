@@ -125,12 +125,16 @@ A `check` is a `ctk`-based pytest test (or a shell command, exit 0 = proven) imp
 
 ```bash
 python -m caps status                    # read-only: proven / stale / failed / waived / never-proven
+python -m caps status --json             # same, machine-readable (state, detail, changed deps, blocking[])
+python -m caps doctor                    # diagnose setup: manifest valid? checks present? hook installed?
 python -m caps verify                    # run checks, record proof; non-zero exit if any fail
 python -m caps verify --capability <id>  # just one
 python -m caps verify --stale            # re-prove only what the gate would block on (one command)
 python -m caps ack <id> --reason "..."   # time-boxed waiver when it genuinely can't be proven now
 python -m caps add  ...                  # propose a new capability (see Discovery)
 ```
+
+`status --json` is the harness's read path — a consumer gets `{capabilities, summary, blocking, ok}` (each cap carries its `state`, plus `detail`/`changed`/`waiver` evidence) without scraping text. `doctor` catches the silent setup gaps that make a green run a lie: an unparseable manifest, a `check` whose file doesn't exist, the Stop hook never installed. It exits non-zero only on hard problems (missing/invalid), so it's safe as a setup gate.
 
 When a check fails or errors, `verify` records a trimmed snippet of its output in
 the ledger alongside the result — so the failure can be read (and fixed) without
@@ -200,7 +204,7 @@ claude-test-kit/
 │   ├── runners.py contracts.py assertions.py verify.py lint.py logguard.py
 ├── caps/                   # Layer 2 — capability verification (uses ctk)
 │   ├── manifest.py fingerprint.py ledger.py freshness.py state.py runner.py
-│   ├── gate.py manifest_edit.py hookinstall.py backup.py cli.py __main__.py
+│   ├── gate.py manifest_edit.py hookinstall.py backup.py doctor.py cli.py __main__.py
 ├── bin/caps-stop-gate.sh   # the Stop-hook wrapper (registered by install-hook)
 ├── conftest.py             # workspace fixture + error-log guard (shared)
 ├── capabilities.yaml       # THIS kit's own capabilities (it dogfoods itself)

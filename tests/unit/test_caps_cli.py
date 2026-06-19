@@ -35,6 +35,92 @@ def test_status_on_unproven_capability(tmp_path, capsys):
 
 
 @pytest.mark.unit
+def test_status_json_is_machine_readable(tmp_path, capsys):
+    p = _project(tmp_path, """
+        capabilities:
+          - id: bad
+            description: x
+            given: g
+            when: w
+            then: t
+            tier: cheap
+            deps: []
+            check: checks/test_bad.py::test_bad
+    """)
+    (p / "checks" / "test_bad.py").write_text("def test_bad():\n    assert False\n")
+    main(["verify"], cwd=str(p))                       # record a failure
+    capsys.readouterr()                                # discard verify output
+    rc = main(["status", "--json"], cwd=str(p))
+    assert rc == 0
+    doc = _json.loads(capsys.readouterr().out)
+    assert doc["ok"] is False
+    assert doc["blocking"] == ["bad"]
+    assert doc["summary"]["fail"] == 1
+    cap = doc["capabilities"][0]
+    assert cap["id"] == "bad" and cap["state"] == "fail"
+    assert "test_bad" in cap["detail"]                 # failure evidence travels in the JSON
+
+
+@pytest.mark.unit
+def test_status_json_ok_true_when_all_proven(tmp_path, capsys):
+    p = _project(tmp_path, """
+        capabilities:
+          - id: good
+            description: x
+            given: g
+            when: w
+            then: t
+            tier: cheap
+            deps: []
+            check: checks/test_ok.py::test_ok
+    """)
+    (p / "checks" / "test_ok.py").write_text("def test_ok():\n    assert True\n")
+    main(["verify"], cwd=str(p))
+    capsys.readouterr()                                # discard verify output
+    main(["status", "--json"], cwd=str(p))
+    doc = _json.loads(capsys.readouterr().out)
+    assert doc["ok"] is True and doc["blocking"] == []
+
+
+@pytest.mark.unit
+def test_doctor_reports_missing_check_and_exits_nonzero(tmp_path, capsys):
+    _project(tmp_path, """
+        capabilities:
+          - id: c1
+            description: x
+            given: g
+            when: w
+            then: t
+            tier: cheap
+            deps: []
+            check: checks/test_absent.py::test_absent
+    """)
+    rc = main(["doctor", "--settings", str(tmp_path / "none.json")], cwd=str(tmp_path))
+    out = capsys.readouterr().out
+    assert rc == 1
+    assert "check missing" in out and "error(s)" in out
+
+
+@pytest.mark.unit
+def test_doctor_json_ok_on_clean_project(tmp_path, capsys):
+    p = _project(tmp_path, """
+        capabilities:
+          - id: c1
+            description: x
+            given: g
+            when: w
+            then: t
+            tier: cheap
+            deps: []
+            check: checks/test_ok.py::test_ok
+    """)
+    (p / "checks" / "test_ok.py").write_text("def test_ok():\n    assert True\n")
+    rc = main(["doctor", "--json", "--settings", str(p / "none.json")], cwd=str(p))
+    doc = _json.loads(capsys.readouterr().out)
+    assert rc == 0 and doc["ok"] is True
+
+
+@pytest.mark.unit
 def test_status_errors_when_no_manifest(tmp_path, capsys):
     rc = main(["status"], cwd=str(tmp_path))
     err = capsys.readouterr().err
