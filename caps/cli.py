@@ -82,7 +82,8 @@ def _capability_report(cap, entry, state, root) -> dict:
     return rep
 
 
-def cmd_status(root: Path, now: datetime, as_json: bool = False) -> int:
+def cmd_status(root: Path, now: datetime, as_json: bool = False,
+               check: bool = False) -> int:
     caps = load_manifest(root / MANIFEST_NAME)
     ledger = load_ledger(root / LEDGER_REL)
     reports = []
@@ -91,11 +92,13 @@ def cmd_status(root: Path, now: datetime, as_json: bool = False) -> int:
         state = capability_state(cap, entry, root, now)
         reports.append((cap, entry, state, _capability_report(cap, entry, state, root)))
 
+    blocking = [r["id"] for *_, r in reports if r["state"] in BLOCK_STATES]
+    rc = 1 if (check and blocking) else 0   # --check turns status into a CI gate
+
     if as_json:
         summary: dict = {}
         for _, _, state, _ in reports:
             summary[state] = summary.get(state, 0) + 1
-        blocking = [r["id"] for *_, r in reports if r["state"] in BLOCK_STATES]
         print(json.dumps({
             "root": str(root),
             "capabilities": [r for *_, r in reports],
@@ -103,7 +106,7 @@ def cmd_status(root: Path, now: datetime, as_json: bool = False) -> int:
             "blocking": blocking,
             "ok": not blocking,
         }, indent=2))
-        return 0
+        return rc
 
     _print_warnings(caps)
     for cap, entry, state, rep in reports:
@@ -114,7 +117,10 @@ def cmd_status(root: Path, now: datetime, as_json: bool = False) -> int:
             more = f", +{len(changed) - 3}" if len(changed) > 3 else ""
             line += f"  (changed: {', '.join(changed[:3])}{more})"
         print(line.rstrip())
-    return 0
+    if check and blocking:
+        print(f"\nnot proven & fresh: {', '.join(blocking)} ({len(blocking)} blocking) "
+              f"— run: python -m caps verify --stale", file=sys.stderr)
+    return rc
 
 
 def cmd_verify(root: Path, now: datetime, only: Optional[str],
@@ -257,6 +263,8 @@ def main(argv=None, cwd: Optional[str] = None) -> int:
     st = sub.add_parser("status", help="show capability status (read-only)")
     st.add_argument("--json", action="store_true",
                     help="emit machine-readable JSON (state, detail, changed deps, blocking set)")
+    st.add_argument("--check", action="store_true",
+                    help="exit non-zero if any capability is unproven/failed/stale (CI gate)")
     v = sub.add_parser("verify", help="run checks and record proof")
     vsel = v.add_mutually_exclusive_group()
     vsel.add_argument("--capability", dest="only", default=None,
@@ -379,7 +387,7 @@ def main(argv=None, cwd: Optional[str] = None) -> int:
 
     try:
         if args.command == "status":
-            return cmd_status(root, now, args.json)
+            return cmd_status(root, now, args.json, args.check)
         if args.command == "verify":
             return cmd_verify(root, now, args.only, args.stale)
         if args.command == "ack":

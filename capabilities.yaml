@@ -257,3 +257,14 @@ capabilities:
     - caps/hookinstall.py
     - caps/ponytail.py
     check: tests/unit/test_caps_hookinstall.py::test_install_ponytail_session_start_hook_with_matcher
+  - id: ci-gate-fails-on-unproven
+    description: caps status --check exits non-zero when a capability is unproven/failed/stale,
+      for CI enforcement
+    given: a project with an unproven capability
+    when: caps status --check runs in CI
+    then: it exits non-zero and names the blocking capability
+    tier: cheap
+    deps:
+    - caps/cli.py
+    - caps/state.py
+    check: tests/unit/test_caps_cli.py::test_status_check_exits_nonzero_on_unproven
