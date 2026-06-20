@@ -126,6 +126,7 @@ A `check` is a `ctk`-based pytest test (or a shell command, exit 0 = proven) imp
 ```bash
 python -m caps status                    # read-only: proven / stale / failed / waived / never-proven
 python -m caps status --json             # same, machine-readable (state, detail, changed deps, blocking[])
+python -m caps status --check            # CI gate: exit non-zero if anything is unproven/failed/stale
 python -m caps doctor                    # diagnose setup: manifest valid? checks present? hook installed?
 python -m caps verify                    # run checks, record proof; non-zero exit if any fail
 python -m caps verify --capability <id>  # just one
@@ -162,6 +163,21 @@ Proof is recorded in `.ctk/ledger.json` (committed, so CI / another machine sees
 - **fail-open** — any internal error allows the turn (with a visible note) rather than bricking it.
 
 Remove with `python -m caps uninstall-hook`.
+
+## Enforcement in CI — `status --check`
+
+The Stop hook enforces claims on a local turn; `status --check` extends the same gate to the **PR boundary**. It re-reads the committed ledger, re-fingerprints `deps` against the current tree, and **exits non-zero when any capability is never-proven, failed, or code-stale** — so "changed the code but didn't re-prove" fails the build instead of merging a stale claim. It's read-only (records nothing) and, like the Stop hook, treats a *time-expired* live capability as a note, not a block, so it never flaps on the clock.
+
+The kit ships a ready workflow at [`.github/workflows/caps.yml`](.github/workflows/caps.yml) — runs the suite (proving the cheap checks pass on a clean machine), then the gate:
+
+```yaml
+- name: Run the test suite
+  run: python -m pytest -q -p no:cacheprovider
+- name: Enforce capability proofs
+  run: python -m caps status --check
+```
+
+Drop those two steps into any caps project's CI to enforce its claims at merge time.
 
 ## Posture — the `SessionStart` hook
 

@@ -83,6 +83,46 @@ def test_status_json_ok_true_when_all_proven(tmp_path, capsys):
 
 
 @pytest.mark.unit
+def test_status_check_exits_nonzero_on_unproven(tmp_path, capsys):
+    # The CI gate: an unproven capability must fail the build, and name what blocks.
+    _project(tmp_path, """
+        capabilities:
+          - id: writes-db
+            description: x
+            given: g
+            when: w
+            then: t
+            tier: cheap
+            deps: []
+            check: checks/test_x.py::test_x
+    """)
+    rc = main(["status", "--check"], cwd=str(tmp_path))
+    err = capsys.readouterr().err
+    assert rc == 1
+    assert "writes-db" in err
+
+
+@pytest.mark.unit
+def test_status_check_exits_zero_when_all_proven(tmp_path, capsys):
+    p = _project(tmp_path, """
+        capabilities:
+          - id: good
+            description: x
+            given: g
+            when: w
+            then: t
+            tier: cheap
+            deps: []
+            check: checks/test_ok.py::test_ok
+    """)
+    (p / "checks" / "test_ok.py").write_text("def test_ok():\n    assert True\n")
+    main(["verify"], cwd=str(p))
+    capsys.readouterr()                                # discard verify output
+    rc = main(["status", "--check"], cwd=str(p))
+    assert rc == 0
+
+
+@pytest.mark.unit
 def test_doctor_reports_missing_check_and_exits_nonzero(tmp_path, capsys):
     _project(tmp_path, """
         capabilities:
