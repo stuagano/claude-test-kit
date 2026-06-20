@@ -17,6 +17,7 @@ from .project import MANIFEST_NAME, LEDGER_REL, find_root
 from .gate import decide
 from .hookinstall import install_hook, uninstall_hook, PONYTAIL_TAG
 from .ponytail import ponytail_instructions
+from .review import review_rubric
 from .manifest_edit import add_capability, ManifestEditError
 from .initializer import init_project, kit_root
 from .doctor import diagnose, exit_code, Finding, OK, WARN, FAIL
@@ -289,6 +290,7 @@ def main(argv=None, cwd: Optional[str] = None) -> int:
     uh.add_argument("--settings", default=str(Path.home() / ".claude" / "settings.json"))
 
     sub.add_parser("ponytail", help="print the 'lazy senior dev' posture (what the SessionStart hook injects)")
+    sub.add_parser("review", help="print the over-engineering review rubric (apply it to the diff under review)")
     ip = sub.add_parser("install-ponytail",
                         help="register a SessionStart hook that injects the ponytail posture")
     ip.add_argument("--settings", default=str(Path.home() / ".claude" / "settings.json"))
@@ -339,6 +341,9 @@ def main(argv=None, cwd: Optional[str] = None) -> int:
         return 0
     if args.command == "ponytail":
         print(ponytail_instructions())
+        return 0
+    if args.command == "review":
+        print(review_rubric())
         return 0
     if args.command == "install-ponytail":
         kit = Path(__file__).resolve().parent.parent

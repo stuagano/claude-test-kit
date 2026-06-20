@@ -135,6 +135,7 @@ python -m caps ack <id> --reason "..."   # time-boxed waiver when it genuinely c
 python -m caps add  ...                  # propose a new capability (see Discovery)
 python -m caps ponytail                  # print the "lazy senior dev" posture (see Posture)
 python -m caps install-ponytail          # inject that posture at session start (SessionStart hook)
+python -m caps review                    # print the over-engineering review rubric (apply to a diff)
 ```
 
 `status --json` is the harness's read path — a consumer gets `{capabilities, summary, blocking, ok}` (each cap carries its `state`, plus `detail`/`changed`/`waiver`/`duration` evidence) without scraping text. `doctor` catches the silent setup gaps that make a green run a lie: an unparseable manifest, a `check` whose file doesn't exist, the Stop hook never installed. It exits non-zero only on hard problems (missing/invalid), so it's safe as a setup gate.
@@ -184,6 +185,8 @@ Drop those two steps into any caps project's CI to enforce its claims at merge t
 If the gate is the **floor** ("you can't claim done until your claims are proven"), the ponytail posture is the **ceiling** ("don't build more than the claim needs"). `caps install-ponytail` registers a `SessionStart` hook that injects a short *lazy senior dev* standing instruction — a YAGNI-first ladder (does this need to exist? → stdlib? → native feature? → installed dep? → one line? → only then write it), with an explicit floor it never crosses (validation, error handling, security, accessibility, anything you asked for). Same wrapper discipline as the gate: short-circuits with no Python in projects without a `capabilities.yaml`, and fails open. Print it with `python -m caps ponytail`; remove with `python -m caps uninstall-ponytail`.
 
 > The idea is ported from [Ponytail](https://github.com/DietrichGebert/ponytail) (MIT) — the standing-posture hook, not its Node.js mode machine. One static posture for now (no lite/full/ultra); add intensity modes if a project wants them.
+
+The posture biases *authoring*; **`python -m caps review`** is the *audit* — the other half of the ceiling. It prints an over-engineering review rubric (five cut-tags — `delete` / `stdlib` / `native` / `yagni` / `shrink` — one line per finding, ending in a `net: -N lines possible` verdict, or `Lean already. Ship.`). Point it at the diff under review; it hunts complexity only, routing correctness and security to a normal review pass. Also ported from Ponytail's `ponytail-review` (MIT).
 
 ## Discovery — `caps add`
 

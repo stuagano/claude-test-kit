@@ -268,3 +268,14 @@ capabilities:
     - caps/cli.py
     - caps/state.py
     check: tests/unit/test_caps_cli.py::test_status_check_exits_nonzero_on_unproven
+  - id: review-rubric-available
+    description: caps review prints the over-engineering review rubric (the five cut-tags
+      and the net-lines verdict)
+    given: a diff under review
+    when: caps review runs
+    then: it prints the delete/stdlib/native/yagni/shrink rubric ending in a net-lines
+      verdict
+    tier: cheap
+    deps:
+    - caps/review.py
+    check: tests/unit/test_caps_review.py::test_rubric_carries_the_tags_and_the_net_metric
