@@ -67,8 +67,13 @@ def _claude_cli_runner(prompt: str) -> str:
     exe = shutil.which("claude")
     if not exe:
         raise ClaudeUnavailable("claude CLI not on PATH")
-    proc = subprocess.run(
-        [exe, "-p", prompt], capture_output=True, text=True, timeout=180)
+    try:
+        proc = subprocess.run(
+            [exe, "-p", prompt], capture_output=True, text=True, timeout=180)
+    except subprocess.TimeoutExpired:
+        # A hung/too-slow CLI is "unavailable to review in band" → fail-open (skip),
+        # same as a missing CLI. Don't let it error the check and block the turn.
+        raise ClaudeUnavailable("claude CLI timed out after 180s")
     if proc.returncode != 0:
         raise ClaudeUnavailable(f"claude exited {proc.returncode}: {proc.stderr[:200]}")
     return proc.stdout

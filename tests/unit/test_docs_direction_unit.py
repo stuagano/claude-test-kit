@@ -58,3 +58,15 @@ def test_default_runner_raises_when_cli_missing(monkeypatch):
     monkeypatch.setattr(dd.shutil, "which", lambda _name: None)
     with pytest.raises(dd.ClaudeUnavailable):
         dd._claude_cli_runner("any prompt")
+
+
+def test_default_runner_treats_timeout_as_unavailable(monkeypatch):
+    import ctk.docs_direction as dd
+    monkeypatch.setattr(dd.shutil, "which", lambda _name: "/usr/bin/claude")
+
+    def _timeout(*_args, **_kwargs):
+        raise dd.subprocess.TimeoutExpired(cmd="claude", timeout=180)
+
+    monkeypatch.setattr(dd.subprocess, "run", _timeout)
+    with pytest.raises(dd.ClaudeUnavailable):
+        dd._claude_cli_runner("any prompt")

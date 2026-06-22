@@ -232,3 +232,16 @@ capabilities:
     - bin/**
     - docs-policy.yaml
     check: tests/unit/test_docs_current.py::test_no_stale_docs
+  - id: docs-direction-current
+    description: docs still match the project's current direction (LLM review, evidence-verified)
+    given: the docs and the current authoritative sources
+    when: the LLM direction review runs and its evidence is verified
+    then: no doc is left in an un-acknowledged overtaken state
+    tier: live
+    deps:
+    - docs/**
+    - README.md
+    - SKILL.md
+    - CLAUDE.md
+    - capabilities.yaml
+    check: checks/test_docs_direction.py::test_no_overtaken_docs

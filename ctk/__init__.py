@@ -44,6 +44,9 @@ from .verify import (
 )
 from .lint import find_swallowed_exceptions, SwallowedExcept
 from .docs import find_stale_docs, Finding, DocsConfig, format_findings
+from .docs_direction import (
+    review_doc_direction, DirectionVerdict, ClaudeUnavailable, format_verdicts,
+)
 
 __all__ = [
     "run",
@@ -66,6 +69,10 @@ __all__ = [
     "Finding",
     "DocsConfig",
     "format_findings",
+    "review_doc_direction",
+    "DirectionVerdict",
+    "ClaudeUnavailable",
+    "format_verdicts",
 ]
 
 __version__ = "0.1.0"
