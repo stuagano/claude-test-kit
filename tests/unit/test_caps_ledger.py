@@ -28,3 +28,15 @@ def test_save_creates_parent_dir(tmp_path):
     path = tmp_path / "deep" / ".ctk" / "ledger.json"
     save_ledger(path, {})
     assert path.exists()
+
+
+@pytest.mark.unit
+def test_save_is_atomic_leaves_no_temp(tmp_path):
+    # An overwrite must replace cleanly via temp+rename, never leaving a partial
+    # .tmp behind for a concurrent verify to trip over.
+    path = tmp_path / ".ctk" / "ledger.json"
+    save_ledger(path, {"a": LedgerEntry(result="pass", at="t", tier="cheap")})
+    save_ledger(path, {"b": LedgerEntry(result="fail", at="t", tier="cheap")})
+    assert list(load_ledger(path)) == ["b"]            # fully replaced, valid JSON
+    leftovers = [p.name for p in path.parent.iterdir() if p.name != "ledger.json"]
+    assert leftovers == []                             # no .ledger.*.tmp residue

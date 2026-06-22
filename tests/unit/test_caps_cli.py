@@ -503,6 +503,39 @@ def test_verify_explicit_capability_overrides_waiver(tmp_path):
 
 
 @pytest.mark.unit
+def test_verify_does_not_clobber_concurrent_ack(tmp_path, monkeypatch):
+    # A verify that started before an `ack` (e.g. a slow live check still running
+    # when someone waives it) must not write its now-stale ledger back over the
+    # waiver. We simulate the race by acking from inside the check run.
+    p = _project(tmp_path, """
+        capabilities:
+          - id: lc
+            description: x
+            given: g
+            when: w
+            then: t
+            tier: cheap
+            deps: []
+            check: checks/test_ok.py::test_ok
+    """)
+    (p / "checks" / "test_ok.py").write_text("def test_ok():\n    assert True\n")
+    import caps.cli as cli
+    real = cli.run_capability
+
+    def racing_run(cap, root):
+        cli.main(["ack", "lc", "--reason", "raced"], cwd=str(p))  # waiver lands mid-run
+        return real(cap, root)
+
+    monkeypatch.setattr(cli, "run_capability", racing_run)
+    rc = cli.main(["verify"], cwd=str(p))
+    assert rc == 0
+    from caps.ledger import load_ledger
+    entry = load_ledger(p / ".ctk" / "ledger.json")["lc"]
+    assert entry.result == "waived"          # the ack survived the verify's save
+    assert entry.waiver["reason"] == "raced"
+
+
+@pytest.mark.unit
 def test_bad_manifest_returns_2_not_traceback(tmp_path):
     _project(tmp_path, """
         capabilities:

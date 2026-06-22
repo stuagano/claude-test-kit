@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import os
+import tempfile
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Optional, Union
@@ -30,4 +32,17 @@ def save_ledger(path: Union[str, Path], entries: dict[str, LedgerEntry]) -> None
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     data = {k: asdict(v) for k, v in entries.items()}
-    path.write_text(json.dumps(data, indent=2, sort_keys=True) + "\n")
+    text = json.dumps(data, indent=2, sort_keys=True) + "\n"
+    # Atomic write (temp + rename in the same dir) so a concurrent verify can't
+    # read a half-written ledger. Proven necessary: multiple verifies do overlap.
+    fd, tmp = tempfile.mkstemp(dir=str(path.parent), prefix=".ledger.", suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w") as f:
+            f.write(text)
+        os.replace(tmp, path)
+    except BaseException:
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
+        raise

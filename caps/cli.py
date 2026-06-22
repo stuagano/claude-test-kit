@@ -143,6 +143,7 @@ def cmd_verify(root: Path, now: datetime, only: Optional[str],
             return 0
 
     worst_ok = True
+    updated: dict = {}
     for cap in caps:
         # An active waiver suppresses the check during a bare verify; the
         # existing waived entry is preserved. An explicit --capability overrides.
@@ -156,7 +157,7 @@ def cmd_verify(root: Path, now: datetime, only: Optional[str],
             fmap = file_fingerprints(cap, root)
             if len(fmap) > FILE_MAP_LIMIT:
                 fmap = None   # broad glob: keep the ledger lean, skip itemizing
-        ledger[cap.id] = LedgerEntry(
+        updated[cap.id] = LedgerEntry(
             result=result,
             at=now.isoformat(),
             tier=cap.tier,
@@ -174,7 +175,19 @@ def cmd_verify(root: Path, now: datetime, only: Optional[str],
             worst_ok = False
             if detail:
                 print(detail, file=sys.stderr)
-    save_ledger(root / LEDGER_REL, ledger)
+
+    # Re-read at save time and merge only the entries we ran, so a concurrent
+    # change (e.g. an `ack` made while a slow live check was running) is not
+    # clobbered by our now-stale in-memory copy. An active waiver on disk wins
+    # over the result we just produced — a routine verify must never silently
+    # delete a human's acknowledgment. An explicit --capability overrides it.
+    disk = load_ledger(root / LEDGER_REL)
+    for cid, entry in updated.items():
+        if only is None and waiver_active(disk.get(cid), now):
+            print(f"{cid}: kept waived (waiver set during run)")
+            continue
+        disk[cid] = entry
+    save_ledger(root / LEDGER_REL, disk)
     return 0 if worst_ok else 1
 
 
