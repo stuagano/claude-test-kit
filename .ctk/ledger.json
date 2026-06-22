@@ -54,9 +54,9 @@
     "waiver": null
   },
   "docs-current": {
-    "at": "2026-06-22T20:41:54.711965+00:00",
+    "at": "2026-06-22T20:42:24.794744+00:00",
     "detail": null,
-    "duration": 0.173,
+    "duration": 0.171,
     "files": null,
     "fingerprint": "sha256:60f5f1a72b942cb25b1394ea6d3088e6bcc98552c0351406122527027f854e3d",
     "result": "pass",
@@ -64,14 +64,17 @@
     "waiver": null
   },
   "docs-direction-current": {
-    "at": "2026-06-22T20:41:54.711965+00:00",
-    "detail": "============================= test session starts ==============================\nplatform darwin -- Python 3.14.6, pytest-9.0.3, pluggy-1.6.0\nrootdir: /Users/stuart.gano/Documents/claude-test-kit\nconfigfile: pytest.ini\ncollected 1 item\n\nchecks/test_docs_direction.py s                                          [100%]\n\n=========================== short test summary info ============================\nSKIPPED [1] checks/test_docs_direction.py:29: claude CLI unavailable \u2014 direction review skipped: claude CLI timed out after 180s\n======================== 1 skipped in 180.04s (0:03:00) ========================",
-    "duration": 180.308,
+    "at": "2026-06-22T20:49:32.540122+00:00",
+    "detail": null,
+    "duration": null,
     "files": null,
     "fingerprint": null,
-    "result": "error",
+    "result": "waived",
     "tier": "live",
-    "waiver": null
+    "waiver": {
+      "reason": "claude -p hangs/timeouts at 180s when run nested in this environment; live direction review cannot run here",
+      "until": "2026-06-23T20:49:32.540122+00:00"
+    }
   },
   "doctor-flags-broken-setup": {
     "at": "2026-06-20T04:58:41.762089+00:00",
@@ -282,9 +285,9 @@
     "waiver": null
   },
   "runner-exit3-is-error": {
-    "at": "2026-06-22T20:41:54.711965+00:00",
+    "at": "2026-06-22T20:42:24.794744+00:00",
     "detail": null,
-    "duration": 0.181,
+    "duration": 0.279,
     "files": {
       "caps/runner.py": "sha256:017a5c0078eea771318082b3b546c40829e3965e59e3b38a52990fa8d5cf047b",
       "tests/unit/test_caps_runner.py": "sha256:76cb802c74ea6d49c284a2664b19332c77d047186d876bb52e35a742bb6e52da"
@@ -318,9 +321,9 @@
     "waiver": null
   },
   "tests-green": {
-    "at": "2026-06-22T20:41:54.711965+00:00",
+    "at": "2026-06-22T20:42:24.794744+00:00",
     "detail": null,
-    "duration": 7.82,
+    "duration": 8.032,
     "files": null,
     "fingerprint": "sha256:7f1c6d21485702027cb8d71513cdfe96263da8cde6d9b9e1ccc9ed51c09e972f",
     "result": "pass",
@@ -351,9 +354,9 @@
     "waiver": null
   },
   "verify-records-timing": {
-    "at": "2026-06-22T20:41:54.711965+00:00",
+    "at": "2026-06-22T20:42:24.794744+00:00",
     "detail": null,
-    "duration": 0.481,
+    "duration": 0.519,
     "files": {
       "caps/cli.py": "sha256:9b055b5708cfb2d3392b551a6fdf9b52687c77cd3c198bcfbde21a49e94d1a24",
       "caps/ledger.py": "sha256:a766b37121d94554552de10b7d2aa5a44e3eaf813c7cc19109b656087b071527",
