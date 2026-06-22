@@ -1,0 +1,32 @@
+name: caps
+
+# Extends caps' in-band enforcement from the local Stop hook to the PR boundary.
+# The test suite proves the cheap checks actually pass on a clean machine; the
+# `caps status --check` gate then asserts every declared capability is still
+# proven & fresh against the committed ledger — so "changed the code but didn't
+# re-prove" fails the PR instead of merging a stale claim. (Time-expired *live*
+# capabilities are a note, not a block, so this never flaps on the clock.)
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  caps:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: python -m pip install --upgrade pip PyYAML pytest
+
+      - name: Run the test suite
+        run: python -m pytest -q -p no:cacheprovider
+
+      - name: Enforce capability proofs
+        run: python -m caps status --check

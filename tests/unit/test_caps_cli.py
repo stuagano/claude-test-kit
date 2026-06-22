@@ -35,6 +35,132 @@ def test_status_on_unproven_capability(tmp_path, capsys):
 
 
 @pytest.mark.unit
+def test_status_json_is_machine_readable(tmp_path, capsys):
+    p = _project(tmp_path, """
+        capabilities:
+          - id: bad
+            description: x
+            given: g
+            when: w
+            then: t
+            tier: cheap
+            deps: []
+            check: checks/test_bad.py::test_bad
+    """)
+    (p / "checks" / "test_bad.py").write_text("def test_bad():\n    assert False\n")
+    main(["verify"], cwd=str(p))                       # record a failure
+    capsys.readouterr()                                # discard verify output
+    rc = main(["status", "--json"], cwd=str(p))
+    assert rc == 0
+    doc = _json.loads(capsys.readouterr().out)
+    assert doc["ok"] is False
+    assert doc["blocking"] == ["bad"]
+    assert doc["summary"]["fail"] == 1
+    cap = doc["capabilities"][0]
+    assert cap["id"] == "bad" and cap["state"] == "fail"
+    assert "test_bad" in cap["detail"]                 # failure evidence travels in the JSON
+
+
+@pytest.mark.unit
+def test_status_json_ok_true_when_all_proven(tmp_path, capsys):
+    p = _project(tmp_path, """
+        capabilities:
+          - id: good
+            description: x
+            given: g
+            when: w
+            then: t
+            tier: cheap
+            deps: []
+            check: checks/test_ok.py::test_ok
+    """)
+    (p / "checks" / "test_ok.py").write_text("def test_ok():\n    assert True\n")
+    main(["verify"], cwd=str(p))
+    capsys.readouterr()                                # discard verify output
+    main(["status", "--json"], cwd=str(p))
+    doc = _json.loads(capsys.readouterr().out)
+    assert doc["ok"] is True and doc["blocking"] == []
+
+
+@pytest.mark.unit
+def test_status_check_exits_nonzero_on_unproven(tmp_path, capsys):
+    # The CI gate: an unproven capability must fail the build, and name what blocks.
+    _project(tmp_path, """
+        capabilities:
+          - id: writes-db
+            description: x
+            given: g
+            when: w
+            then: t
+            tier: cheap
+            deps: []
+            check: checks/test_x.py::test_x
+    """)
+    rc = main(["status", "--check"], cwd=str(tmp_path))
+    err = capsys.readouterr().err
+    assert rc == 1
+    assert "writes-db" in err
+
+
+@pytest.mark.unit
+def test_status_check_exits_zero_when_all_proven(tmp_path, capsys):
+    p = _project(tmp_path, """
+        capabilities:
+          - id: good
+            description: x
+            given: g
+            when: w
+            then: t
+            tier: cheap
+            deps: []
+            check: checks/test_ok.py::test_ok
+    """)
+    (p / "checks" / "test_ok.py").write_text("def test_ok():\n    assert True\n")
+    main(["verify"], cwd=str(p))
+    capsys.readouterr()                                # discard verify output
+    rc = main(["status", "--check"], cwd=str(p))
+    assert rc == 0
+
+
+@pytest.mark.unit
+def test_doctor_reports_missing_check_and_exits_nonzero(tmp_path, capsys):
+    _project(tmp_path, """
+        capabilities:
+          - id: c1
+            description: x
+            given: g
+            when: w
+            then: t
+            tier: cheap
+            deps: []
+            check: checks/test_absent.py::test_absent
+    """)
+    rc = main(["doctor", "--settings", str(tmp_path / "none.json")], cwd=str(tmp_path))
+    out = capsys.readouterr().out
+    assert rc == 1
+    assert "check missing" in out and "error(s)" in out
+
+
+@pytest.mark.unit
+def test_doctor_json_ok_on_clean_project(tmp_path, capsys):
+    p = _project(tmp_path, """
+        capabilities:
+          - id: c1
+            description: x
+            given: g
+            when: w
+            then: t
+            tier: cheap
+            deps: []
+            check: checks/test_ok.py::test_ok
+    """)
+    (p / "checks" / "test_ok.py").write_text("def test_ok():\n    assert True\n")
+    rc = main(["doctor", "--json", "--settings", str(p / "none.json")], cwd=str(p))
+    doc = _json.loads(capsys.readouterr().out)
+    assert rc == 0 and doc["ok"] is True
+
+
+@pytest.mark.unit
 def test_status_errors_when_no_manifest(tmp_path, capsys):
     rc = main(["status"], cwd=str(tmp_path))
     err = capsys.readouterr().err
@@ -81,7 +207,185 @@ def test_verify_records_fail_and_exits_nonzero(tmp_path):
     rc = main(["verify"], cwd=str(p))
     assert rc == 1
     from caps.ledger import load_ledger
-    assert load_ledger(p / ".ctk" / "ledger.json")["bad-cap"].result == "fail"
+    entry = load_ledger(p / ".ctk" / "ledger.json")["bad-cap"]
+    assert entry.result == "fail"
+    # The failure output is persisted so the gate can show why without a re-run.
+    assert entry.detail and "test_bad" in entry.detail
+
+
+@pytest.mark.unit
+def test_slowdown_note_fires_only_on_real_regression():
+    from caps.cli import _slowdown_note
+    # Doubled and grew by >= floor -> flagged.
+    assert _slowdown_note("c", 1.0, 3.0) is not None
+    # Minor jitter -> no note.
+    assert _slowdown_note("c", 1.0, 1.2) is None
+    # Doubled but absolute jump below the floor (sub-second) -> no note.
+    assert _slowdown_note("c", 0.001, 0.3) is None
+    # No prior timing -> nothing to compare.
+    assert _slowdown_note("c", None, 5.0) is None
+    # A recorded 0.0 is a real prior (sub-ms check, rounded), not "unknown" —
+    # it must not silently disable detection.
+    assert _slowdown_note("c", 0.0, 1.0) is not None
+
+
+@pytest.mark.unit
+def test_verify_records_duration(tmp_path):
+    p = _project(tmp_path, """
+        capabilities:
+          - id: timed
+            description: x
+            given: g
+            when: w
+            then: t
+            tier: cheap
+            deps: []
+            check: checks/test_ok.py::test_ok
+    """)
+    (p / "checks" / "test_ok.py").write_text("def test_ok():\n    assert True\n")
+    main(["verify"], cwd=str(p))
+    from caps.ledger import load_ledger
+    entry = load_ledger(p / ".ctk" / "ledger.json")["timed"]
+    assert entry.duration is not None and entry.duration >= 0.0
+
+
+@pytest.mark.unit
+def test_status_json_includes_duration(tmp_path, capsys):
+    p = _project(tmp_path, """
+        capabilities:
+          - id: timed
+            description: x
+            given: g
+            when: w
+            then: t
+            tier: cheap
+            deps: []
+            check: checks/test_ok.py::test_ok
+    """)
+    (p / "checks" / "test_ok.py").write_text("def test_ok():\n    assert True\n")
+    main(["verify"], cwd=str(p))
+    capsys.readouterr()
+    main(["status", "--json"], cwd=str(p))
+    doc = _json.loads(capsys.readouterr().out)
+    assert "duration" in doc["capabilities"][0]
+
+
+@pytest.mark.unit
+def test_verify_records_per_file_map_for_narrow_deps(tmp_path):
+    p = _project(tmp_path, """
+        capabilities:
+          - id: cap
+            description: x
+            given: g
+            when: w
+            then: t
+            tier: cheap
+            deps: [ingest.py]
+            check: checks/test_ok.py::test_ok
+    """)
+    (p / "checks" / "test_ok.py").write_text("def test_ok():\n    assert True\n")
+    (p / "ingest.py").write_text("x = 1\n")
+    main(["verify"], cwd=str(p))
+    from caps.ledger import load_ledger
+    files = load_ledger(p / ".ctk" / "ledger.json")["cap"].files
+    assert set(files) == {"checks/test_ok.py", "ingest.py"}
+
+
+@pytest.mark.unit
+def test_verify_skips_per_file_map_for_broad_glob(tmp_path):
+    # A glob resolving to more than FILE_MAP_LIMIT files records no per-file map,
+    # keeping the committed ledger lean.
+    from caps.fingerprint import FILE_MAP_LIMIT
+    p = _project(tmp_path, """
+        capabilities:
+          - id: cap
+            description: x
+            given: g
+            when: w
+            then: t
+            tier: cheap
+            deps: ["lib/**"]
+            check: checks/test_ok.py::test_ok
+    """)
+    (p / "checks" / "test_ok.py").write_text("def test_ok():\n    assert True\n")
+    (p / "lib").mkdir()
+    for i in range(FILE_MAP_LIMIT + 2):
+        (p / "lib" / f"m{i}.py").write_text(f"v = {i}\n")
+    main(["verify"], cwd=str(p))
+    from caps.ledger import load_ledger
+    assert load_ledger(p / ".ctk" / "ledger.json")["cap"].files is None
+    p = _project(tmp_path, """
+        capabilities:
+          - id: ok-cap
+            description: x
+            given: g
+            when: w
+            then: t
+            tier: cheap
+            deps: []
+            check: checks/test_ok.py::test_ok
+    """)
+    (p / "checks" / "test_ok.py").write_text("def test_ok():\n    assert True\n")
+    main(["verify"], cwd=str(p))
+    from caps.ledger import load_ledger
+    assert load_ledger(p / ".ctk" / "ledger.json")["ok-cap"].detail is None
+
+
+@pytest.mark.unit
+def test_verify_stale_reproves_only_blocking_set(tmp_path):
+    p = _project(tmp_path, """
+        capabilities:
+          - id: a
+            description: x
+            given: g
+            when: w
+            then: t
+            tier: cheap
+            deps: []
+            check: checks/test_a.py::test_a
+          - id: b
+            description: x
+            given: g
+            when: w
+            then: t
+            tier: cheap
+            deps: []
+            check: checks/test_b.py::test_b
+    """)
+    (p / "checks" / "test_a.py").write_text("def test_a():\n    assert True\n")
+    (p / "checks" / "test_b.py").write_text("def test_b():\n    assert True\n")
+    from caps.ledger import load_ledger
+    # Prove 'a' so it is fresh; 'b' stays never-proven (i.e. stale to the gate).
+    main(["verify", "--capability", "a"], cwd=str(p))
+    a_at = load_ledger(p / ".ctk" / "ledger.json")["a"].at
+
+    rc = main(["verify", "--stale"], cwd=str(p))
+    assert rc == 0
+    ledger = load_ledger(p / ".ctk" / "ledger.json")
+    # 'b' got proven; 'a' was left untouched (its timestamp did not move).
+    assert ledger["b"].result == "pass"
+    assert ledger["a"].at == a_at
+
+
+@pytest.mark.unit
+def test_verify_stale_when_nothing_stale_is_a_noop(tmp_path, capsys):
+    p = _project(tmp_path, """
+        capabilities:
+          - id: a
+            description: x
+            given: g
+            when: w
+            then: t
+            tier: cheap
+            deps: []
+            check: checks/test_a.py::test_a
+    """)
+    (p / "checks" / "test_a.py").write_text("def test_a():\n    assert True\n")
+    main(["verify"], cwd=str(p))            # everything proven & fresh
+    rc = main(["verify", "--stale"], cwd=str(p))
+    out = capsys.readouterr().out
+    assert rc == 0
+    assert "nothing stale" in out.lower()
 
 
 @pytest.mark.unit

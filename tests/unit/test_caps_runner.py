@@ -15,18 +15,31 @@ def _cap(**kw):
 
 @pytest.mark.unit
 def test_shell_pass(tmp_path):
-    assert run_capability(_cap(check_target="exit 0"), tmp_path) == "pass"
+    result, detail, duration = run_capability(_cap(check_target="exit 0"), tmp_path)
+    assert result == "pass"
+    assert detail is None  # a pass records no failure detail
+    assert isinstance(duration, float) and duration >= 0.0
 
 
 @pytest.mark.unit
 def test_shell_fail(tmp_path):
-    assert run_capability(_cap(check_target="exit 1"), tmp_path) == "fail"
+    result, _, _ = run_capability(_cap(check_target="exit 1"), tmp_path)
+    assert result == "fail"
 
 
 @pytest.mark.unit
 def test_shell_error_convention_exit_3(tmp_path):
     # Exit 3 is the reserved "could not run / unreachable" signal.
-    assert run_capability(_cap(check_target="exit 3"), tmp_path) == "error"
+    result, _, _ = run_capability(_cap(check_target="exit 3"), tmp_path)
+    assert result == "error"
+
+
+@pytest.mark.unit
+def test_shell_fail_captures_detail(tmp_path):
+    # The failing output must come back so the gate can show *why* without a re-run.
+    result, detail, _ = run_capability(_cap(check_target="echo boom-marker >&2; exit 1"), tmp_path)
+    assert result == "fail"
+    assert detail and "boom-marker" in detail
 
 
 @pytest.mark.unit
@@ -34,7 +47,10 @@ def test_pytest_pass(tmp_path):
     (tmp_path / "checks").mkdir()
     (tmp_path / "checks" / "test_ok.py").write_text("def test_ok():\n    assert True\n")
     cap = _cap(check_kind="pytest", check_target="checks/test_ok.py::test_ok")
-    assert run_capability(cap, tmp_path) == "pass"
+    result, detail, duration = run_capability(cap, tmp_path)
+    assert result == "pass"
+    assert detail is None
+    assert duration >= 0.0
 
 
 @pytest.mark.unit
@@ -42,7 +58,9 @@ def test_pytest_fail(tmp_path):
     (tmp_path / "checks").mkdir()
     (tmp_path / "checks" / "test_bad.py").write_text("def test_bad():\n    assert False\n")
     cap = _cap(check_kind="pytest", check_target="checks/test_bad.py::test_bad")
-    assert run_capability(cap, tmp_path) == "fail"
+    result, detail, _ = run_capability(cap, tmp_path)
+    assert result == "fail"
+    assert detail and "test_bad" in detail  # the failing node name is surfaced
 
 
 @pytest.mark.unit
@@ -53,4 +71,5 @@ def test_pytest_skip_is_error_not_pass(tmp_path):
     (tmp_path / "checks" / "test_skip.py").write_text(
         "import pytest\ndef test_skip():\n    pytest.skip('cannot run here')\n")
     cap = _cap(check_kind="pytest", check_target="checks/test_skip.py::test_skip")
-    assert run_capability(cap, tmp_path) == "error"
+    result, _, _ = run_capability(cap, tmp_path)
+    assert result == "error"

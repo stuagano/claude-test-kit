@@ -9,7 +9,10 @@ from typing import Union
 
 _IGNORE = shutil.ignore_patterns("__pycache__", "*.pyc", "*.pyo")
 FRAMEWORK_DIRS = ("ctk", "caps")
-WRAPPER_REL = Path("bin") / "caps-stop-gate.sh"   # a single drop-in file, merged into bin/
+WRAPPER_RELS = (   # drop-in hook wrappers, merged into bin/ (never owning the dir)
+    Path("bin") / "caps-stop-gate.sh",
+    Path("bin") / "caps-ponytail.sh",
+)
 _CONFTEST_WARNING = (
     "kept your existing conftest.py; until you add the kit's `workspace` fixture "
     "and the autouse `fail_on_error_log` guard to it, the error-log guard is OFF "
@@ -47,22 +50,23 @@ def _vendor_one(src: Path, dst: Path, force: bool) -> StepResult:
     return StepResult("created", str(dst), f"vendored {name}/")
 
 
-def _vendor_wrapper(kit: Path, target: Path, force: bool) -> StepResult:
-    """Copy the Stop-hook wrapper *file* into the target's bin/, merging into an
+def _vendor_wrapper(kit: Path, target: Path, force: bool, rel: Path) -> StepResult:
+    """Copy one hook wrapper *file* into the target's bin/, merging into an
     existing bin/ rather than owning the directory — so a user's own bin/ scripts
     are never deleted (unlike the ctk/caps packages, bin/ is a generic dir name)."""
-    src = kit / WRAPPER_REL
-    dst = target / WRAPPER_REL
+    src = kit / rel
+    dst = target / rel
+    name = rel.name
     if not src.is_file():
-        return StepResult("skipped", str(dst), "kit has no Stop-hook wrapper to vendor")
+        return StepResult("skipped", str(dst), f"kit has no {name} to vendor")
     existed = dst.exists()
     if existed and not force:
-        return StepResult("skipped", str(dst), "bin/caps-stop-gate.sh already present")
+        return StepResult("skipped", str(dst), f"bin/{name} already present")
     dst.parent.mkdir(parents=True, exist_ok=True)   # merge into existing bin/, never rmtree
     shutil.copy2(src, dst)
     if existed:
-        return StepResult("overwritten", str(dst), "re-vendored bin/caps-stop-gate.sh (--force)")
-    return StepResult("created", str(dst), "vendored bin/caps-stop-gate.sh")
+        return StepResult("overwritten", str(dst), f"re-vendored bin/{name} (--force)")
+    return StepResult("created", str(dst), f"vendored bin/{name}")
 
 
 def ensure_conftest(target: Union[str, Path], kit: Union[str, Path]) -> StepResult:
@@ -190,7 +194,8 @@ def vendor_framework(
         if not src.is_dir():
             continue  # nothing to vendor for a kit missing this dir
         results.append(_vendor_one(src, target / name, force))
-    results.append(_vendor_wrapper(kit, target, force))
+    for rel in WRAPPER_RELS:
+        results.append(_vendor_wrapper(kit, target, force, rel))
     return results
 
 
