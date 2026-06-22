@@ -53,6 +53,26 @@
     "tier": "cheap",
     "waiver": null
   },
+  "docs-current": {
+    "at": "2026-06-22T20:41:54.711965+00:00",
+    "detail": null,
+    "duration": 0.173,
+    "files": null,
+    "fingerprint": "sha256:60f5f1a72b942cb25b1394ea6d3088e6bcc98552c0351406122527027f854e3d",
+    "result": "pass",
+    "tier": "cheap",
+    "waiver": null
+  },
+  "docs-direction-current": {
+    "at": "2026-06-22T20:41:54.711965+00:00",
+    "detail": "============================= test session starts ==============================\nplatform darwin -- Python 3.14.6, pytest-9.0.3, pluggy-1.6.0\nrootdir: /Users/stuart.gano/Documents/claude-test-kit\nconfigfile: pytest.ini\ncollected 1 item\n\nchecks/test_docs_direction.py s                                          [100%]\n\n=========================== short test summary info ============================\nSKIPPED [1] checks/test_docs_direction.py:29: claude CLI unavailable \u2014 direction review skipped: claude CLI timed out after 180s\n======================== 1 skipped in 180.04s (0:03:00) ========================",
+    "duration": 180.308,
+    "files": null,
+    "fingerprint": null,
+    "result": "error",
+    "tier": "live",
+    "waiver": null
+  },
   "doctor-flags-broken-setup": {
     "at": "2026-06-20T04:58:41.762089+00:00",
     "detail": null,
@@ -262,14 +282,14 @@
     "waiver": null
   },
   "runner-exit3-is-error": {
-    "at": "2026-06-19T03:29:44.709722+00:00",
+    "at": "2026-06-22T20:41:54.711965+00:00",
     "detail": null,
-    "duration": 0.231,
+    "duration": 0.181,
     "files": {
-      "caps/runner.py": "sha256:4495f80f7447655aa76f6a8eb66bee8afa735afa28b44416a2168d1e128f49ee",
-      "tests/unit/test_caps_runner.py": "sha256:2028cc8df70f1a795c8c8238a6e1a193a36f268105db512ce5b37b4cffdc14e9"
+      "caps/runner.py": "sha256:017a5c0078eea771318082b3b546c40829e3965e59e3b38a52990fa8d5cf047b",
+      "tests/unit/test_caps_runner.py": "sha256:76cb802c74ea6d49c284a2664b19332c77d047186d876bb52e35a742bb6e52da"
     },
-    "fingerprint": "sha256:fc9c98843b5473ca36c153881b5b8ef39896da33b3b3b13bb752ef4d6635a59e",
+    "fingerprint": "sha256:a5ea51be56e23c4b9306aaafdaf19e71cb861a922c09ce26ce79d0b5d12a7285",
     "result": "pass",
     "tier": "cheap",
     "waiver": null
@@ -298,11 +318,11 @@
     "waiver": null
   },
   "tests-green": {
-    "at": "2026-06-20T04:58:41.762089+00:00",
+    "at": "2026-06-22T20:41:54.711965+00:00",
     "detail": null,
-    "duration": 8.169,
+    "duration": 7.82,
     "files": null,
-    "fingerprint": "sha256:a7e7d4cc41c24b6575be594bdb90b7ae4b8a482ebed4d36312fa6a19eae571cc",
+    "fingerprint": "sha256:7f1c6d21485702027cb8d71513cdfe96263da8cde6d9b9e1ccc9ed51c09e972f",
     "result": "pass",
     "tier": "cheap",
     "waiver": null
@@ -331,16 +351,16 @@
     "waiver": null
   },
   "verify-records-timing": {
-    "at": "2026-06-20T04:58:41.762089+00:00",
+    "at": "2026-06-22T20:41:54.711965+00:00",
     "detail": null,
-    "duration": 0.386,
+    "duration": 0.481,
     "files": {
       "caps/cli.py": "sha256:9b055b5708cfb2d3392b551a6fdf9b52687c77cd3c198bcfbde21a49e94d1a24",
       "caps/ledger.py": "sha256:a766b37121d94554552de10b7d2aa5a44e3eaf813c7cc19109b656087b071527",
-      "caps/runner.py": "sha256:4495f80f7447655aa76f6a8eb66bee8afa735afa28b44416a2168d1e128f49ee",
+      "caps/runner.py": "sha256:017a5c0078eea771318082b3b546c40829e3965e59e3b38a52990fa8d5cf047b",
       "tests/unit/test_caps_cli.py": "sha256:b596aecdb032276bcf547839cb03a875df41fc2b218ce7fada0922a26e4fd253"
     },
-    "fingerprint": "sha256:3d41a4cb8de9d2db4331111a0bcee08dcb9327e1dd27acff3268f88dfdbbf5ce",
+    "fingerprint": "sha256:f497c413b0b66de6e61079149a06a08089543c58d0b02c84be14dd1932fd89c8",
     "result": "pass",
     "tier": "cheap",
     "waiver": null
