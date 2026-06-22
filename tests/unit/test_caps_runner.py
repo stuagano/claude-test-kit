@@ -61,3 +61,15 @@ def test_pytest_fail(tmp_path):
     result, detail, _ = run_capability(cap, tmp_path)
     assert result == "fail"
     assert detail and "test_bad" in detail  # the failing node name is surfaced
+
+
+@pytest.mark.unit
+def test_pytest_skip_is_error_not_pass(tmp_path):
+    # A skipped check exits 0 but proves nothing — must stay un-proven (error),
+    # never a false green.
+    (tmp_path / "checks").mkdir()
+    (tmp_path / "checks" / "test_skip.py").write_text(
+        "import pytest\ndef test_skip():\n    pytest.skip('cannot run here')\n")
+    cap = _cap(check_kind="pytest", check_target="checks/test_skip.py::test_skip")
+    result, _, _ = run_capability(cap, tmp_path)
+    assert result == "error"

@@ -151,10 +151,11 @@ capabilities:
 `PyYAML` is installed), or run from this kit with the kit on `PYTHONPATH`:
 `PYTHONPATH=<this-skill-dir> python -m caps verify`.
 
-> Note: enforcement is currently a discipline this skill reminds you of. A
-> `Stop` hook that blocks "done" automatically (so it can't be skipped) is the
-> planned Phase 2 — until it lands, treat the steps above as mandatory whenever
-> a `capabilities.yaml` is present.
+> Enforcement is in-band: a `Stop` hook blocks "done" automatically (so it
+> can't be skipped) whenever a `capabilities.yaml` is present and a capability
+> is never-proven, failed, or code-stale. Install it with `caps install-hook`
+> (remove with `caps uninstall-hook`). The steps above are what clears the gate;
+> follow them whenever a `capabilities.yaml` is present.
 
 ## Unit vs. integration
 
