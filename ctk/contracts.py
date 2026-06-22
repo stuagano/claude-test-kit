@@ -22,17 +22,13 @@ class ContractError(AssertionError):
 class Expect:
     """
     Fluent, accumulating validator. Each method records a pass/fail and returns
-    self so you can chain. Call .verify() to raise on any failure, or rely on
-    auto-verify at the end of the chain via .done().
-
-    By default checks raise immediately (fail-fast). Use collect=True to gather
-    every failure and raise them together.
+    self so you can chain. Every check runs; call .verify() at the end of the
+    chain to raise one report with all accumulated failures.
     """
 
-    def __init__(self, value: Any, *, label: str = "value", collect: bool = True):
+    def __init__(self, value: Any, *, label: str = "value"):
         self.value = value
         self.label = label
-        self.collect = collect
         self._failures: list[str] = []
         self._parsed_json: Any = None
         self._json_done = False
@@ -40,11 +36,7 @@ class Expect:
     # ----- core recording -----
     def _check(self, ok: bool, msg: str) -> "Expect":
         if not ok:
-            full = f"[{self.label}] {msg}"
-            if self.collect:
-                self._failures.append(full)
-            else:
-                raise ContractError(full + self._context())
+            self._failures.append(f"[{self.label}] {msg}")
         return self
 
     def _context(self) -> str:
@@ -124,10 +116,7 @@ class Expect:
             )
         return self.value
 
-    # alias for readability at end of a chain
-    done = verify
 
-
-def expect(value: Any, *, label: str = "value", collect: bool = True) -> Expect:
+def expect(value: Any, *, label: str = "value") -> Expect:
     """Start an output contract. Remember to end the chain with .verify()."""
-    return Expect(value, label=label, collect=collect)
+    return Expect(value, label=label)

@@ -5,7 +5,6 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from .ledger import LedgerEntry
-from .manifest import Capability
 
 
 class FreshnessError(Exception):
@@ -27,25 +26,6 @@ def parse_duration(s: str) -> timedelta:
     if not m:
         raise FreshnessError(f"bad duration {s!r}; expected forms like '24h', '30m', '2d'")
     return timedelta(**{_UNITS[m.group(2)]: int(m.group(1))})
-
-
-def is_fresh(
-    capability: Capability,
-    entry: Optional[LedgerEntry],
-    current_fingerprint: str,
-    now: datetime,
-) -> bool:
-    """True iff the recorded proof is a pass AND still trustworthy.
-
-    code freshness: fingerprint must match the current code.
-    duration freshness: the pass must be within the window.
-    """
-    if entry is None or entry.result != "pass":
-        return False
-    if capability.freshness == "code":
-        return entry.fingerprint == current_fingerprint
-    window = parse_duration(capability.freshness)
-    return (now - parse_iso(entry.at)) < window
 
 
 def waiver_active(entry: Optional[LedgerEntry], now: datetime) -> bool:

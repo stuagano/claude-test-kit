@@ -10,7 +10,7 @@ from typing import Optional
 from .manifest import load_manifest, ManifestError
 from .ledger import load_ledger, LedgerEntry, save_ledger
 from .fingerprint import fingerprint, file_fingerprints, changed_deps, FILE_MAP_LIMIT
-from .freshness import is_fresh, waiver_active, parse_duration, FreshnessError
+from .freshness import waiver_active, parse_duration, FreshnessError
 from .runner import run_capability
 from .state import capability_state, BLOCK_STATES
 from .project import MANIFEST_NAME, LEDGER_REL, find_root
