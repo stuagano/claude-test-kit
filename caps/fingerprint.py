@@ -4,7 +4,6 @@ import glob
 import hashlib
 import os
 from pathlib import Path
-from typing import Optional, Union
 
 from .manifest import Capability
 
@@ -63,7 +62,7 @@ def _hash_file(p: Path) -> str:
     return "sha256:" + h.hexdigest()
 
 
-def fingerprint(capability: Capability, root: Union[str, Path]) -> str:
+def fingerprint(capability: Capability, root: str | Path) -> str:
     """Hash the check file plus every file matched by deps globs.
 
     Deterministic: files are sorted by their path relative to root. A missing
@@ -78,7 +77,7 @@ def fingerprint(capability: Capability, root: Union[str, Path]) -> str:
     return "sha256:" + h.hexdigest()
 
 
-def file_fingerprints(capability: Capability, root: Union[str, Path]) -> dict:
+def file_fingerprints(capability: Capability, root: str | Path) -> dict:
     """Per-file hashes ({rel: 'sha256:..'}) over the same surface fingerprint()
     covers. Recorded at proof time so a later code-stale can report *which* file
     changed, not merely that one did."""
@@ -86,9 +85,7 @@ def file_fingerprints(capability: Capability, root: Union[str, Path]) -> dict:
     return {rel: _hash_file(root / rel) for rel in _resolve_rels(capability, root)}
 
 
-def changed_deps(
-    capability: Capability, recorded: Optional[dict], root: Union[str, Path]
-) -> list[str]:
+def changed_deps(capability: Capability, recorded: dict | None, root: str | Path) -> list[str]:
     """Files that differ from the recorded per-file proof. `recorded` is the
     stored {rel: hash} map (None on older proofs or broad globs). Returns the
     sorted paths added/removed/modified since the proof; empty when it can't be
@@ -96,5 +93,4 @@ def changed_deps(
     if not recorded:
         return []
     current = file_fingerprints(capability, root)
-    return sorted(r for r in set(current) | set(recorded)
-                  if current.get(r) != recorded.get(r))
+    return sorted(r for r in set(current) | set(recorded) if current.get(r) != recorded.get(r))

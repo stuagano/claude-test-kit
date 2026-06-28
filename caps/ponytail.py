@@ -10,6 +10,7 @@ needs". One static posture (no lite/full/ultra mode machine yet — YAGNI).
 The text lives here as the single source of truth: `caps ponytail` prints it,
 and the SessionStart hook runs `caps ponytail` to feed it into the session.
 """
+
 from __future__ import annotations
 
 POSTURE = """\

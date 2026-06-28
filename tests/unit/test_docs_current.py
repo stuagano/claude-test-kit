@@ -1,4 +1,5 @@
 """Capability check for `docs-current`: docs don't drift from reality."""
+
 import pytest
 
 pytestmark = pytest.mark.unit

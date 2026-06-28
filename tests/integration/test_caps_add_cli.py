@@ -3,6 +3,7 @@ import sys
 from pathlib import Path
 
 import pytest
+
 import ctk
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -16,11 +17,26 @@ def _caps(args, cwd):
 
 @pytest.mark.integration
 def test_add_then_verify_is_red_then_green(tmp_path):
-    add = _caps([
-        "add", "--id", "raw", "--tier", "cheap",
-        "--description", "d", "--given", "g", "--when", "w", "--then", "t",
-        "--check", "checks/test_raw.py::test_raw",
-    ], tmp_path)
+    add = _caps(
+        [
+            "add",
+            "--id",
+            "raw",
+            "--tier",
+            "cheap",
+            "--description",
+            "d",
+            "--given",
+            "g",
+            "--when",
+            "w",
+            "--then",
+            "t",
+            "--check",
+            "checks/test_raw.py::test_raw",
+        ],
+        tmp_path,
+    )
     assert add.returncode == 0, add.stdout + add.stderr
 
     st = _caps(["status"], tmp_path)

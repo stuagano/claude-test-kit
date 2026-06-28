@@ -1,10 +1,11 @@
 import textwrap
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
-from caps.gate import decide, GateDecision
 
-NOW = datetime(2026, 6, 15, 12, 0, 0, tzinfo=timezone.utc)
+from caps.gate import decide
+
+NOW = datetime(2026, 6, 15, 12, 0, 0, tzinfo=UTC)
 
 
 def _project(tmp_path, body):
@@ -14,8 +15,12 @@ def _project(tmp_path, body):
 
 
 def _payload(tmp_path, **kw):
-    p = {"cwd": str(tmp_path), "transcript_path": "", "stop_hook_active": False,
-         "hook_event_name": "Stop"}
+    p = {
+        "cwd": str(tmp_path),
+        "transcript_path": "",
+        "stop_hook_active": False,
+        "hook_event_name": "Stop",
+    }
     p.update(kw)
     return p
 
@@ -59,9 +64,18 @@ def test_block_reason_includes_recorded_failure_detail(tmp_path):
     _project(tmp_path, CHEAP)
     from caps.ledger import LedgerEntry, save_ledger
     from caps.project import LEDGER_REL
-    save_ledger(tmp_path / LEDGER_REL, {"c1": LedgerEntry(
-        result="fail", at=NOW.isoformat(), tier="cheap",
-        detail="E   assert False\ntest_x.py:1: AssertionError")})
+
+    save_ledger(
+        tmp_path / LEDGER_REL,
+        {
+            "c1": LedgerEntry(
+                result="fail",
+                at=NOW.isoformat(),
+                tier="cheap",
+                detail="E   assert False\ntest_x.py:1: AssertionError",
+            )
+        },
+    )
     d = decide(_payload(tmp_path), NOW)
     assert d.block is True
     assert "last failure" in d.reason
@@ -73,14 +87,23 @@ def test_block_reason_includes_recorded_failure_detail(tmp_path):
 def test_proven_fresh_allows(tmp_path):
     _project(tmp_path, CHEAP)
     (tmp_path / "checks" / "test_x.py").write_text("def test_x(): pass\n")
-    from caps.manifest import load_manifest
     from caps.fingerprint import fingerprint
     from caps.ledger import LedgerEntry, save_ledger
+    from caps.manifest import load_manifest
     from caps.project import LEDGER_REL
+
     cap = load_manifest(tmp_path / "capabilities.yaml")[0]
-    save_ledger(tmp_path / LEDGER_REL, {"c1": LedgerEntry(
-        result="pass", at=NOW.isoformat(), tier="cheap",
-        fingerprint=fingerprint(cap, tmp_path))})
+    save_ledger(
+        tmp_path / LEDGER_REL,
+        {
+            "c1": LedgerEntry(
+                result="pass",
+                at=NOW.isoformat(),
+                tier="cheap",
+                fingerprint=fingerprint(cap, tmp_path),
+            )
+        },
+    )
     assert decide(_payload(tmp_path), NOW).block is False
 
 
@@ -88,7 +111,9 @@ def test_proven_fresh_allows(tmp_path):
 def test_code_stale_block_names_the_changed_dep(tmp_path):
     # Prove c1 against ingest.py, then change ingest.py: the cap goes code-stale
     # and the block message must name *which* dep drifted.
-    _project(tmp_path, """
+    _project(
+        tmp_path,
+        """
         capabilities:
           - id: c1
             description: d
@@ -98,19 +123,29 @@ def test_code_stale_block_names_the_changed_dep(tmp_path):
             tier: cheap
             deps: [ingest.py]
             check: checks/test_x.py::test_x
-    """)
+    """,
+    )
     (tmp_path / "checks" / "test_x.py").write_text("def test_x(): pass\n")
     (tmp_path / "ingest.py").write_text("x = 1\n")
-    from caps.manifest import load_manifest
-    from caps.fingerprint import fingerprint, file_fingerprints
+    from caps.fingerprint import file_fingerprints, fingerprint
     from caps.ledger import LedgerEntry, save_ledger
+    from caps.manifest import load_manifest
     from caps.project import LEDGER_REL
+
     cap = load_manifest(tmp_path / "capabilities.yaml")[0]
-    save_ledger(tmp_path / LEDGER_REL, {"c1": LedgerEntry(
-        result="pass", at=NOW.isoformat(), tier="cheap",
-        fingerprint=fingerprint(cap, tmp_path),
-        files=file_fingerprints(cap, tmp_path))})
-    (tmp_path / "ingest.py").write_text("x = 2\n")   # drift one dep
+    save_ledger(
+        tmp_path / LEDGER_REL,
+        {
+            "c1": LedgerEntry(
+                result="pass",
+                at=NOW.isoformat(),
+                tier="cheap",
+                fingerprint=fingerprint(cap, tmp_path),
+                files=file_fingerprints(cap, tmp_path),
+            )
+        },
+    )
+    (tmp_path / "ingest.py").write_text("x = 2\n")  # drift one dep
     d = decide(_payload(tmp_path), NOW)
     assert d.block is True
     assert "code-stale" in d.reason
@@ -120,7 +155,9 @@ def test_code_stale_block_names_the_changed_dep(tmp_path):
 
 @pytest.mark.unit
 def test_time_expired_does_not_block_but_notes(tmp_path):
-    _project(tmp_path, """
+    _project(
+        tmp_path,
+        """
         capabilities:
           - id: live1
             description: d
@@ -130,11 +167,19 @@ def test_time_expired_does_not_block_but_notes(tmp_path):
             tier: live
             deps: []
             check: checks/test_x.py::test_x
-    """)
+    """,
+    )
     from caps.ledger import LedgerEntry, save_ledger
     from caps.project import LEDGER_REL
-    save_ledger(tmp_path / LEDGER_REL, {"live1": LedgerEntry(
-        result="pass", at=(NOW - timedelta(hours=30)).isoformat(), tier="live")})
+
+    save_ledger(
+        tmp_path / LEDGER_REL,
+        {
+            "live1": LedgerEntry(
+                result="pass", at=(NOW - timedelta(hours=30)).isoformat(), tier="live"
+            )
+        },
+    )
     d = decide(_payload(tmp_path), NOW)
     assert d.block is False
     assert d.note and "live1" in d.note
@@ -146,6 +191,5 @@ def test_resolves_via_transcript_path_when_cwd_blank(tmp_path):
     fake_transcript = tmp_path / "sub" / "t.jsonl"
     fake_transcript.parent.mkdir()
     fake_transcript.write_text("")
-    d = decide({"cwd": "", "transcript_path": str(fake_transcript),
-                "stop_hook_active": False}, NOW)
+    d = decide({"cwd": "", "transcript_path": str(fake_transcript), "stop_hook_active": False}, NOW)
     assert d.block is True

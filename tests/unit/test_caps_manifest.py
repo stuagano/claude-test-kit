@@ -1,6 +1,8 @@
 import textwrap
+
 import pytest
-from caps.manifest import load_manifest, ManifestError
+
+from caps.manifest import ManifestError, load_manifest
 
 
 def _write(tmp_path, body: str):
@@ -11,7 +13,9 @@ def _write(tmp_path, body: str):
 
 @pytest.mark.unit
 def test_loads_pytest_check_with_defaults(tmp_path):
-    p = _write(tmp_path, """
+    p = _write(
+        tmp_path,
+        """
         capabilities:
           - id: writes-db
             description: writes rows and reads them back
@@ -21,7 +25,8 @@ def test_loads_pytest_check_with_defaults(tmp_path):
             tier: live
             deps: [ingest.py]
             check: checks/test_db.py::test_write_readback
-    """)
+    """,
+    )
     caps = load_manifest(p)
     assert len(caps) == 1
     c = caps[0]
@@ -36,7 +41,9 @@ def test_loads_pytest_check_with_defaults(tmp_path):
 
 @pytest.mark.unit
 def test_cheap_default_freshness_is_code(tmp_path):
-    p = _write(tmp_path, """
+    p = _write(
+        tmp_path,
+        """
         capabilities:
           - id: parses-output
             description: parses
@@ -46,13 +53,16 @@ def test_cheap_default_freshness_is_code(tmp_path):
             tier: cheap
             deps: ["src/**"]
             check: checks/test_parse.py::test_it
-    """)
+    """,
+    )
     assert load_manifest(p)[0].freshness == "code"
 
 
 @pytest.mark.unit
 def test_shell_check(tmp_path):
-    p = _write(tmp_path, """
+    p = _write(
+        tmp_path,
+        """
         capabilities:
           - id: deploy-live
             description: deploy is live
@@ -63,7 +73,8 @@ def test_shell_check(tmp_path):
             deps: [app.yaml]
             check:
               shell: ./scripts/prove_deploy.sh app
-    """)
+    """,
+    )
     c = load_manifest(p)[0]
     assert c.check_kind == "shell"
     assert c.check_target == "./scripts/prove_deploy.sh app"
@@ -71,7 +82,9 @@ def test_shell_check(tmp_path):
 
 @pytest.mark.unit
 def test_missing_deps_produces_warning(tmp_path):
-    p = _write(tmp_path, """
+    p = _write(
+        tmp_path,
+        """
         capabilities:
           - id: no-deps
             description: x
@@ -80,7 +93,8 @@ def test_missing_deps_produces_warning(tmp_path):
             then: t
             tier: cheap
             check: checks/test_x.py::test_x
-    """)
+    """,
+    )
     c = load_manifest(p)[0]
     assert c.deps == []
     assert any("deps" in w for w in c.warnings)
@@ -88,7 +102,9 @@ def test_missing_deps_produces_warning(tmp_path):
 
 @pytest.mark.unit
 def test_bad_tier_raises(tmp_path):
-    p = _write(tmp_path, """
+    p = _write(
+        tmp_path,
+        """
         capabilities:
           - id: bad
             description: x
@@ -97,14 +113,17 @@ def test_bad_tier_raises(tmp_path):
             then: t
             tier: medium
             check: checks/test_x.py::test_x
-    """)
+    """,
+    )
     with pytest.raises(ManifestError):
         load_manifest(p)
 
 
 @pytest.mark.unit
 def test_duplicate_ids_raise(tmp_path):
-    p = _write(tmp_path, """
+    p = _write(
+        tmp_path,
+        """
         capabilities:
           - id: dup
             description: x
@@ -120,7 +139,8 @@ def test_duplicate_ids_raise(tmp_path):
             then: t
             tier: cheap
             check: checks/b.py::t
-    """)
+    """,
+    )
     with pytest.raises(ManifestError):
         load_manifest(p)
 
@@ -142,12 +162,15 @@ def test_missing_capabilities_key_raises(tmp_path):
 
 @pytest.mark.unit
 def test_missing_required_field_raises(tmp_path):
-    p = _write(tmp_path, """
+    p = _write(
+        tmp_path,
+        """
         capabilities:
           - id: incomplete
             description: x
             tier: cheap
             check: checks/x.py::t
-    """)
+    """,
+    )
     with pytest.raises(ManifestError):
         load_manifest(p)

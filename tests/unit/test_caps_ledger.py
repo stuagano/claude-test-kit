@@ -1,4 +1,5 @@
 import pytest
+
 from caps.ledger import LedgerEntry, load_ledger, save_ledger
 
 
@@ -12,8 +13,11 @@ def test_round_trip(tmp_path):
     path = tmp_path / ".ctk" / "ledger.json"
     entries = {
         "writes-db": LedgerEntry(
-            result="pass", at="2026-06-15T07:30:00+00:00",
-            tier="live", fingerprint="sha256:abc", waiver=None,
+            result="pass",
+            at="2026-06-15T07:30:00+00:00",
+            tier="live",
+            fingerprint="sha256:abc",
+            waiver=None,
         )
     }
     save_ledger(path, entries)
@@ -37,6 +41,6 @@ def test_save_is_atomic_leaves_no_temp(tmp_path):
     path = tmp_path / ".ctk" / "ledger.json"
     save_ledger(path, {"a": LedgerEntry(result="pass", at="t", tier="cheap")})
     save_ledger(path, {"b": LedgerEntry(result="fail", at="t", tier="cheap")})
-    assert list(load_ledger(path)) == ["b"]            # fully replaced, valid JSON
+    assert list(load_ledger(path)) == ["b"]  # fully replaced, valid JSON
     leftovers = [p.name for p in path.parent.iterdir() if p.name != "ledger.json"]
-    assert leftovers == []                             # no .ledger.*.tmp residue
+    assert leftovers == []  # no .ledger.*.tmp residue

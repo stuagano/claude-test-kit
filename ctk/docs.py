@@ -8,12 +8,13 @@ is honest under fingerprint freshness.
 
 Detectors: broken_ref, dead_link, orphan, superseded, assertion_failed.
 """
+
 from __future__ import annotations
 
 import os
 import re
+from collections.abc import Sequence
 from dataclasses import dataclass, field
-from typing import Optional, Sequence
 
 SEVERITY_ERROR = "error"
 SEVERITY_WARN = "warn"
@@ -23,15 +24,16 @@ _PLACEHOLDER = re.compile(r"(path/to/|/\.\.\.|<[^>]+>|\bexample/|\bfoo/|\bbar/|\
 _MD_LINK = re.compile(r"\[[^\]]*\]\(([^)]+)\)")
 _SPEC_SLUG = re.compile(r"(\d{4}-\d{2}-\d{2})-(.+?)(?:-design|-discovery)?\.md$")
 _SUPERSEDE_PROSE = re.compile(
-    r"(superseded|replaced|deprecated)\s+by\s+\[[^\]]*\]\(([^)]+)\)", re.IGNORECASE)
+    r"(superseded|replaced|deprecated)\s+by\s+\[[^\]]*\]\(([^)]+)\)", re.IGNORECASE
+)
 
 
 @dataclass
 class Finding:
     doc: str
-    line: Optional[int]
-    kind: str        # broken_ref | dead_link | orphan | superseded | assertion_failed
-    severity: str    # error | warn
+    line: int | None
+    kind: str  # broken_ref | dead_link | orphan | superseded | assertion_failed
+    severity: str  # error | warn
     message: str
     evidence: str = ""
 
@@ -45,22 +47,31 @@ class Finding:
 class DocsConfig:
     doc_roots: Sequence[str] = ("docs/", "README.md", "SKILL.md", "CLAUDE.md")
     entrypoints: Sequence[str] = ("README.md", "SKILL.md", "CLAUDE.md")
-    ignore: Sequence[str] = ()                       # regexes: path-like tokens to skip
+    ignore: Sequence[str] = ()  # regexes: path-like tokens to skip
     # Immutable archival trees (e.g. design-time specs) that must not be drift-checked
     # by ANY detector — paths are repo-relative prefixes.
     scan_exempt: Sequence[str] = ("docs/superpowers/",)
     orphan_exempt: Sequence[str] = ("docs/superpowers/",)
     known_top_dirs: Sequence[str] = ("caps/", "ctk/", "bin/", "tests/", "docs/", "examples/")
     tracked_ext: Sequence[str] = (
-        ".py", ".md", ".sh", ".yaml", ".yml", ".txt", ".ini", ".toml", ".json",
+        ".py",
+        ".md",
+        ".sh",
+        ".yaml",
+        ".yml",
+        ".txt",
+        ".ini",
+        ".toml",
+        ".json",
     )
-    severity_overrides: dict = field(default_factory=dict)   # kind -> severity
-    direction: dict = field(default_factory=dict)            # consumed by docs_direction
+    severity_overrides: dict = field(default_factory=dict)  # kind -> severity
+    direction: dict = field(default_factory=dict)  # consumed by docs_direction
 
     @classmethod
-    def from_yaml(cls, path: str) -> "DocsConfig":
+    def from_yaml(cls, path: str) -> DocsConfig:
         import yaml
-        with open(path, "r") as f:
+
+        with open(path) as f:
             data = yaml.safe_load(f) or {}
         known = {f_.name for f_ in cls.__dataclass_fields__.values()}
         return cls(**{k: v for k, v in data.items() if k in known})
@@ -80,9 +91,7 @@ def _looks_like_repo_path(tok: str, config: DocsConfig) -> bool:
         return False
     if tok.startswith(tuple(config.known_top_dirs)):
         return True
-    if "/" in tok and tok.endswith(tuple(config.tracked_ext)):
-        return True
-    return False
+    return "/" in tok and tok.endswith(tuple(config.tracked_ext))
 
 
 def _exists(rel_path: str, repo_root: str) -> bool:
@@ -98,7 +107,7 @@ def _slugify_heading(text: str) -> str:
 
 def _anchors_in(path: str, repo_root: str) -> set[str]:
     out: set[str] = set()
-    with open(os.path.join(repo_root, path), "r", errors="replace") as f:
+    with open(os.path.join(repo_root, path), errors="replace") as f:
         for line in f:
             m = re.match(r"#{1,6}\s+(.*)", line)
             if m:
@@ -108,8 +117,7 @@ def _anchors_in(path: str, repo_root: str) -> set[str]:
 
 def _is_relative_repo_target(target: str) -> bool:
     target = target.strip()
-    return bool(target) and not target.startswith(
-        ("http://", "https://", "mailto:", "#", "/"))
+    return bool(target) and not target.startswith(("http://", "https://", "mailto:", "#", "/"))
 
 
 def _detect_broken_refs(doc: str, text: str, repo_root: str, config: DocsConfig) -> list[Finding]:
@@ -118,9 +126,16 @@ def _detect_broken_refs(doc: str, text: str, repo_root: str, config: DocsConfig)
         for m in _CODE_SPAN.finditer(line):
             tok = m.group(1)
             if _looks_like_repo_path(tok, config) and not _exists(tok, repo_root):
-                out.append(Finding(doc, i, "broken_ref",
-                                   _severity("broken_ref", config, SEVERITY_ERROR),
-                                   "code-span path does not exist", tok))
+                out.append(
+                    Finding(
+                        doc,
+                        i,
+                        "broken_ref",
+                        _severity("broken_ref", config, SEVERITY_ERROR),
+                        "code-span path does not exist",
+                        tok,
+                    )
+                )
     return out
 
 
@@ -135,22 +150,42 @@ def _detect_dead_links(doc: str, text: str, repo_root: str, config: DocsConfig) 
             file_part, _, anchor = target.partition("#")
             rel = os.path.normpath(os.path.join(doc_dir, file_part)) if file_part else doc
             if not os.path.exists(os.path.join(repo_root, rel)):
-                out.append(Finding(doc, i, "dead_link",
-                                   _severity("dead_link", config, SEVERITY_ERROR),
-                                   "link target does not exist", target))
+                out.append(
+                    Finding(
+                        doc,
+                        i,
+                        "dead_link",
+                        _severity("dead_link", config, SEVERITY_ERROR),
+                        "link target does not exist",
+                        target,
+                    )
+                )
             elif anchor:
                 try:
                     anchors = _anchors_in(rel, repo_root)
                 except OSError as e:
-                    out.append(Finding(doc, i, "dead_link",
-                                       _severity("dead_link", config, SEVERITY_ERROR),
-                                       f"could not read link target to verify anchor: {e}",
-                                       target))
+                    out.append(
+                        Finding(
+                            doc,
+                            i,
+                            "dead_link",
+                            _severity("dead_link", config, SEVERITY_ERROR),
+                            f"could not read link target to verify anchor: {e}",
+                            target,
+                        )
+                    )
                     continue
                 if _slugify_heading(anchor) not in anchors:
-                    out.append(Finding(doc, i, "dead_link",
-                                       _severity("dead_link_anchor", config, SEVERITY_WARN),
-                                       "link anchor not found in target", target))
+                    out.append(
+                        Finding(
+                            doc,
+                            i,
+                            "dead_link",
+                            _severity("dead_link_anchor", config, SEVERITY_WARN),
+                            "link anchor not found in target",
+                            target,
+                        )
+                    )
     return out
 
 
@@ -170,11 +205,15 @@ def _outgoing_doc_links(doc: str, text: str, repo_root: str) -> list[str]:
     return out
 
 
-def _detect_orphans(docs: list[str], texts: dict[str, str],
-                    repo_root: str, config: DocsConfig) -> list[Finding]:
+def _detect_orphans(
+    docs: list[str], texts: dict[str, str], repo_root: str, config: DocsConfig
+) -> list[Finding]:
     reachable: set[str] = set()
-    frontier = [os.path.normpath(e) for e in config.entrypoints
-                if os.path.exists(os.path.join(repo_root, e))]
+    frontier = [
+        os.path.normpath(e)
+        for e in config.entrypoints
+        if os.path.exists(os.path.join(repo_root, e))
+    ]
     reachable.update(frontier)
     while frontier:
         cur = frontier.pop()
@@ -188,9 +227,16 @@ def _detect_orphans(docs: list[str], texts: dict[str, str],
     for doc in docs:
         if doc in reachable or doc in entry or doc.startswith(exempt):
             continue
-        out.append(Finding(doc, None, "orphan",
-                           _severity("orphan", config, SEVERITY_WARN),
-                           "doc is not reachable from any entrypoint", doc))
+        out.append(
+            Finding(
+                doc,
+                None,
+                "orphan",
+                _severity("orphan", config, SEVERITY_WARN),
+                "doc is not reachable from any entrypoint",
+                doc,
+            )
+        )
     return out
 
 
@@ -207,6 +253,7 @@ def _front_matter(text: str) -> tuple[dict, int]:
         return {}, 0
     block = text[4:end]
     import yaml
+
     try:
         data = yaml.safe_load(block)
     except yaml.YAMLError as e:
@@ -227,29 +274,52 @@ def _detect_assertions(doc: str, text: str, repo_root: str, config: DocsConfig) 
         return out
     for p in ctk_block.get("requires_paths", []) or []:
         if not os.path.exists(os.path.join(repo_root, str(p))):
-            out.append(Finding(doc, 1, "assertion_failed", sev,
-                               "requires_paths target does not exist", str(p)))
+            out.append(
+                Finding(
+                    doc, 1, "assertion_failed", sev, "requires_paths target does not exist", str(p)
+                )
+            )
     for entry in ctk_block.get("requires_grep", []) or []:
         if not isinstance(entry, dict):
-            out.append(Finding(doc, 1, "assertion_failed", sev,
-                               "requires_grep entry is not a mapping", str(entry)))
+            out.append(
+                Finding(
+                    doc,
+                    1,
+                    "assertion_failed",
+                    sev,
+                    "requires_grep entry is not a mapping",
+                    str(entry),
+                )
+            )
             continue
         f_path = str(entry.get("file", ""))
         pattern = str(entry.get("pattern", ""))
         abs_p = os.path.join(repo_root, f_path)
         if not os.path.exists(abs_p):
-            out.append(Finding(doc, 1, "assertion_failed", sev,
-                               "requires_grep file does not exist", f_path))
+            out.append(
+                Finding(
+                    doc, 1, "assertion_failed", sev, "requires_grep file does not exist", f_path
+                )
+            )
             continue
-        with open(abs_p, "r", errors="replace") as fh:
+        with open(abs_p, errors="replace") as fh:
             if not re.search(pattern, fh.read()):
-                out.append(Finding(doc, 1, "assertion_failed", sev,
-                                   f"requires_grep pattern not found: {pattern}", f_path))
+                out.append(
+                    Finding(
+                        doc,
+                        1,
+                        "assertion_failed",
+                        sev,
+                        f"requires_grep pattern not found: {pattern}",
+                        f_path,
+                    )
+                )
     return out
 
 
-def _detect_superseded(docs: list[str], texts: dict[str, str],
-                       repo_root: str, config: DocsConfig) -> list[Finding]:
+def _detect_superseded(
+    docs: list[str], texts: dict[str, str], repo_root: str, config: DocsConfig
+) -> list[Finding]:
     out: list[Finding] = []
     sev = _severity("superseded", config, SEVERITY_WARN)
     # newest date per spec slug
@@ -264,26 +334,47 @@ def _detect_superseded(docs: list[str], texts: dict[str, str],
         try:
             fm, _ = _front_matter(text)
         except ValueError:
-            fm = {}   # malformed front matter is already reported by _detect_assertions
+            fm = {}  # malformed front matter is already reported by _detect_assertions
         if "superseded_by" in fm:
-            out.append(Finding(doc, 1, "superseded", sev,
-                               "front-matter declares superseded_by",
-                               str(fm["superseded_by"])))
+            out.append(
+                Finding(
+                    doc,
+                    1,
+                    "superseded",
+                    sev,
+                    "front-matter declares superseded_by",
+                    str(fm["superseded_by"]),
+                )
+            )
             continue
         pm = _SUPERSEDE_PROSE.search(text)
         if pm:
             doc_dir = os.path.dirname(doc)
             tgt = os.path.normpath(os.path.join(doc_dir, pm.group(2).partition("#")[0]))
             if os.path.exists(os.path.join(repo_root, tgt)):
-                out.append(Finding(doc, None, "superseded", sev,
-                                   "prose says superseded/replaced/deprecated by",
-                                   pm.group(2)))
+                out.append(
+                    Finding(
+                        doc,
+                        None,
+                        "superseded",
+                        sev,
+                        "prose says superseded/replaced/deprecated by",
+                        pm.group(2),
+                    )
+                )
                 continue
         m = _SPEC_SLUG.search(os.path.basename(doc))
         if m and m.group(1) < latest.get(m.group(2), m.group(1)):
-            out.append(Finding(doc, None, "superseded", sev,
-                               "a newer doc shares this spec slug",
-                               f"newer: {latest[m.group(2)]}"))
+            out.append(
+                Finding(
+                    doc,
+                    None,
+                    "superseded",
+                    sev,
+                    "a newer doc shares this spec slug",
+                    f"newer: {latest[m.group(2)]}",
+                )
+            )
     return out
 
 
@@ -308,7 +399,7 @@ def _iter_docs(doc_roots: Sequence[str], repo_root: str) -> list[str]:
 def find_stale_docs(
     doc_roots: Sequence[str] = ("docs/", "README.md", "SKILL.md", "CLAUDE.md"),
     repo_root: str = ".",
-    config: Optional[DocsConfig] = None,
+    config: DocsConfig | None = None,
 ) -> list[Finding]:
     config = config or DocsConfig(doc_roots=doc_roots)
     findings: list[Finding] = []
@@ -320,19 +411,23 @@ def find_stale_docs(
     texts: dict[str, str] = {}
     for doc in docs:
         try:
-            with open(os.path.join(repo_root, doc), "r", errors="strict") as f:
+            with open(os.path.join(repo_root, doc), errors="strict") as f:
                 texts[doc] = f.read()
         except (OSError, UnicodeDecodeError) as e:
-            findings.append(Finding(doc, None, "broken_ref",
-                                    SEVERITY_ERROR, f"could not read doc: {e}", doc))
+            findings.append(
+                Finding(doc, None, "broken_ref", SEVERITY_ERROR, f"could not read doc: {e}", doc)
+            )
     for doc, text in texts.items():
         findings.extend(_detect_broken_refs(doc, text, repo_root, config))
         findings.extend(_detect_dead_links(doc, text, repo_root, config))
         try:
             findings.extend(_detect_assertions(doc, text, repo_root, config))
         except ValueError as e:
-            findings.append(Finding(doc, 1, "assertion_failed", SEVERITY_ERROR,
-                                    f"malformed front matter: {e}", doc))
+            findings.append(
+                Finding(
+                    doc, 1, "assertion_failed", SEVERITY_ERROR, f"malformed front matter: {e}", doc
+                )
+            )
     findings.extend(_detect_orphans(list(texts), texts, repo_root, config))
     findings.extend(_detect_superseded(list(texts), texts, repo_root, config))
     return findings

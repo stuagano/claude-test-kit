@@ -1,5 +1,3 @@
-from pathlib import Path
-
 import pytest
 
 from caps import initializer
@@ -35,8 +33,10 @@ def test_vendor_skips_existing_without_force_overwrites_with_force(tmp_path):
     kit = tmp_path / "kit"
     (kit / "ctk").mkdir(parents=True)
     (kit / "ctk" / "mod.py").write_text("new = 2\n")
-    (kit / "caps").mkdir(); (kit / "caps" / "mod.py").write_text("c = 1\n")
-    (kit / "bin").mkdir(); (kit / "bin" / "caps-stop-gate.sh").write_text("echo\n")
+    (kit / "caps").mkdir()
+    (kit / "caps" / "mod.py").write_text("c = 1\n")
+    (kit / "bin").mkdir()
+    (kit / "bin" / "caps-stop-gate.sh").write_text("echo\n")
     target = tmp_path / "proj"
     (target / "ctk").mkdir(parents=True)
     (target / "ctk" / "mod.py").write_text("old = 1\n")  # pre-existing
@@ -55,9 +55,12 @@ def test_vendor_force_overwrites_existing_wrapper(tmp_path):
     # --force with a pre-existing wrapper file: the wrapper is replaced and the
     # result reports "overwritten" (covers the overwrite branch of _vendor_wrapper).
     kit = tmp_path / "kit"
-    (kit / "ctk").mkdir(parents=True); (kit / "ctk" / "mod.py").write_text("x = 1\n")
-    (kit / "caps").mkdir(); (kit / "caps" / "mod.py").write_text("c = 1\n")
-    (kit / "bin").mkdir(); (kit / "bin" / "caps-stop-gate.sh").write_text("NEW\n")
+    (kit / "ctk").mkdir(parents=True)
+    (kit / "ctk" / "mod.py").write_text("x = 1\n")
+    (kit / "caps").mkdir()
+    (kit / "caps" / "mod.py").write_text("c = 1\n")
+    (kit / "bin").mkdir()
+    (kit / "bin" / "caps-stop-gate.sh").write_text("NEW\n")
     target = tmp_path / "proj"
     (target / "bin").mkdir(parents=True)
     (target / "bin" / "caps-stop-gate.sh").write_text("OLD\n")  # pre-existing wrapper
@@ -65,8 +68,9 @@ def test_vendor_force_overwrites_existing_wrapper(tmp_path):
     results = initializer.vendor_framework(target, kit, force=True)
 
     assert (target / "bin" / "caps-stop-gate.sh").read_text() == "NEW\n"
-    assert any(r.action == "overwritten" and r.target.endswith("caps-stop-gate.sh")
-               for r in results)
+    assert any(
+        r.action == "overwritten" and r.target.endswith("caps-stop-gate.sh") for r in results
+    )
 
 
 @pytest.mark.unit
@@ -83,8 +87,10 @@ def test_vendor_allows_self_target_without_force(tmp_path):
     kit = tmp_path / "kit"
     (kit / "ctk").mkdir(parents=True)
     (kit / "ctk" / "mod.py").write_text("x = 1\n")
-    (kit / "caps").mkdir(); (kit / "caps" / "mod.py").write_text("c = 1\n")
-    (kit / "bin").mkdir(); (kit / "bin" / "caps-stop-gate.sh").write_text("echo\n")
+    (kit / "caps").mkdir()
+    (kit / "caps" / "mod.py").write_text("c = 1\n")
+    (kit / "bin").mkdir()
+    (kit / "bin" / "caps-stop-gate.sh").write_text("echo\n")
     # Re-running init from inside an installed project must NOT raise; it skips.
     results = initializer.vendor_framework(kit, kit, force=False)
     assert all(r.action == "skipped" for r in results)
@@ -93,9 +99,12 @@ def test_vendor_allows_self_target_without_force(tmp_path):
 @pytest.mark.unit
 def test_vendor_force_preserves_user_bin_scripts(tmp_path):
     kit = tmp_path / "kit"
-    (kit / "ctk").mkdir(parents=True); (kit / "ctk" / "mod.py").write_text("x = 1\n")
-    (kit / "caps").mkdir(); (kit / "caps" / "mod.py").write_text("c = 1\n")
-    (kit / "bin").mkdir(); (kit / "bin" / "caps-stop-gate.sh").write_text("echo gate\n")
+    (kit / "ctk").mkdir(parents=True)
+    (kit / "ctk" / "mod.py").write_text("x = 1\n")
+    (kit / "caps").mkdir()
+    (kit / "caps" / "mod.py").write_text("c = 1\n")
+    (kit / "bin").mkdir()
+    (kit / "bin" / "caps-stop-gate.sh").write_text("echo gate\n")
     target = tmp_path / "proj"
     (target / "bin").mkdir(parents=True)
     (target / "bin" / "my_script.sh").write_text("echo mine\n")  # user's own script
@@ -154,9 +163,7 @@ def test_ensure_pytest_config_skips_when_pytest_ini_present(tmp_path):
 
 @pytest.mark.unit
 def test_ensure_pytest_config_detects_pyproject_table(tmp_path):
-    (tmp_path / "pyproject.toml").write_text(
-        "[tool.pytest.ini_options]\npythonpath = ['.']\n"
-    )
+    (tmp_path / "pyproject.toml").write_text("[tool.pytest.ini_options]\npythonpath = ['.']\n")
     r = initializer.ensure_pytest_config(tmp_path)
     assert r.action == "skipped"
     assert not (tmp_path / "pytest.ini").exists()
@@ -176,10 +183,9 @@ def test_starter_manifest_written_and_parses_empty(tmp_path):
 
     manifest = tmp_path / "capabilities.yaml"
     assert manifest.is_file()
-    assert load_manifest(manifest) == []          # parses, zero capabilities
+    assert load_manifest(manifest) == []  # parses, zero capabilities
     assert (tmp_path / "checks" / ".gitkeep").is_file()
-    assert any(r.action == "created" and r.target.endswith("capabilities.yaml")
-               for r in results)
+    assert any(r.action == "created" and r.target.endswith("capabilities.yaml") for r in results)
 
 
 @pytest.mark.unit
@@ -187,8 +193,7 @@ def test_starter_manifest_never_overwrites_existing(tmp_path):
     (tmp_path / "capabilities.yaml").write_text("capabilities:\n  - mine\n")
     results = initializer.ensure_starter_manifest(tmp_path)
     assert (tmp_path / "capabilities.yaml").read_text() == "capabilities:\n  - mine\n"
-    assert any(r.action == "skipped" and r.target.endswith("capabilities.yaml")
-               for r in results)
+    assert any(r.action == "skipped" and r.target.endswith("capabilities.yaml") for r in results)
 
 
 @pytest.mark.unit
@@ -206,17 +211,15 @@ def test_gitignore_appends_only_missing_entries(tmp_path):
     (tmp_path / ".gitignore").write_text("node_modules/\n.venv/\n")
     r = initializer.ensure_gitignore(tmp_path)
     text = (tmp_path / ".gitignore").read_text()
-    assert text.count(".venv/") == 1            # not duplicated
-    assert "node_modules/" in text              # user's lines preserved
-    assert "*.bak.*" in text                    # missing one added
-    assert r.action == "created"                # "created" = we added entries
+    assert text.count(".venv/") == 1  # not duplicated
+    assert "node_modules/" in text  # user's lines preserved
+    assert "*.bak.*" in text  # missing one added
+    assert r.action == "created"  # "created" = we added entries
 
 
 @pytest.mark.unit
 def test_gitignore_noop_when_all_present(tmp_path):
-    (tmp_path / ".gitignore").write_text(
-        ".venv/\n__pycache__/\n.pytest_cache/\n*.bak.*\n"
-    )
+    (tmp_path / ".gitignore").write_text(".venv/\n__pycache__/\n.pytest_cache/\n*.bak.*\n")
     before = (tmp_path / ".gitignore").read_text()
     r = initializer.ensure_gitignore(tmp_path)
     assert (tmp_path / ".gitignore").read_text() == before

@@ -1,0 +1,35 @@
+# Borrowed from awesome-claude-code's pre-commit setup.
+# See https://pre-commit.com — install with `pre-commit install`.
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: check-added-large-files
+      - id: check-case-conflict
+      - id: check-merge-conflict
+      - id: check-yaml
+      - id: check-json
+      - id: detect-private-key
+      - id: end-of-file-fixer
+      - id: mixed-line-ending
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.12.2
+    hooks:
+      # Lint (with autofix), then format — mirrors `make lint` + `make format`.
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format
+
+  - repo: local
+    hooks:
+      # ctk's analogue of acc's `check-readme-generated` hook: prove the
+      # project's declared capabilities are still green & fresh before a commit
+      # lands. Read-only and fast (reads the ledger, hashes deps; never runs
+      # checks), and a no-op in any checkout without a capabilities.yaml.
+      - id: caps-gate
+        name: caps capability gate (status --check)
+        entry: python -m caps status --check
+        language: system
+        pass_filenames: false
+        always_run: true
