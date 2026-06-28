@@ -3,25 +3,23 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Optional
 
-from .manifest import load_manifest, ManifestError
-from .ledger import load_ledger, LedgerEntry, save_ledger
-from .fingerprint import fingerprint, file_fingerprints, changed_deps, FILE_MAP_LIMIT
-from .freshness import waiver_active, parse_duration, FreshnessError
-from .runner import run_capability
-from .state import capability_state, BLOCK_STATES
-from .project import MANIFEST_NAME, LEDGER_REL, find_root
+from .doctor import FAIL, OK, WARN, diagnose, exit_code
+from .fingerprint import FILE_MAP_LIMIT, changed_deps, file_fingerprints, fingerprint
+from .freshness import FreshnessError, parse_duration, waiver_active
 from .gate import decide
-from .hookinstall import install_hook, uninstall_hook, PONYTAIL_TAG
-from .ponytail import ponytail_instructions
-from .review import review_rubric
-from .manifest_edit import add_capability, ManifestEditError
+from .hookinstall import PONYTAIL_TAG, install_hook, uninstall_hook
 from .initializer import init_project, kit_root
-from .doctor import diagnose, exit_code, Finding, OK, WARN, FAIL
-
+from .ledger import LedgerEntry, load_ledger, save_ledger
+from .manifest import ManifestError, load_manifest
+from .manifest_edit import ManifestEditError, add_capability
+from .ponytail import ponytail_instructions
+from .project import LEDGER_REL, MANIFEST_NAME, find_root
+from .review import review_rubric
+from .runner import run_capability
+from .state import BLOCK_STATES, capability_state
 
 _DISPLAY = {
     "proven": "proven",
@@ -33,8 +31,13 @@ _DISPLAY = {
     "waived": "waived",
 }
 _GLYPH = {
-    "proven": "OK ", "never proven": "----", "fail": "FAIL",
-    "error": "ERR ", "stale": "STALE", "expired": "EXP ", "waived": "WAIV",
+    "proven": "OK ",
+    "never proven": "----",
+    "fail": "FAIL",
+    "error": "ERR ",
+    "stale": "STALE",
+    "expired": "EXP ",
+    "waived": "WAIV",
 }
 
 
@@ -44,14 +47,18 @@ SLOW_REGRESSION_FACTOR = 2.0
 SLOW_REGRESSION_FLOOR = 0.5  # seconds
 
 
-def _slowdown_note(cap_id: str, prev: Optional[float], new: float) -> Optional[str]:
+def _slowdown_note(cap_id: str, prev: float | None, new: float) -> str | None:
     """Flag a real timing regression against the previously-recorded duration."""
-    if prev is not None and new >= prev * SLOW_REGRESSION_FACTOR and (new - prev) >= SLOW_REGRESSION_FLOOR:
+    if (
+        prev is not None
+        and new >= prev * SLOW_REGRESSION_FACTOR
+        and (new - prev) >= SLOW_REGRESSION_FLOOR
+    ):
         return f"{cap_id}: slower — {prev:.2f}s -> {new:.2f}s (check timing regressed)"
     return None
 
 
-def _fmt_duration(seconds: Optional[float]) -> str:
+def _fmt_duration(seconds: float | None) -> str:
     """Render a recorded check duration as a ` (1.23s)` suffix, or "" if unknown."""
     return "" if seconds is None else f" ({seconds:.2f}s)"
 
@@ -83,8 +90,7 @@ def _capability_report(cap, entry, state, root) -> dict:
     return rep
 
 
-def cmd_status(root: Path, now: datetime, as_json: bool = False,
-               check: bool = False) -> int:
+def cmd_status(root: Path, now: datetime, as_json: bool = False, check: bool = False) -> int:
     caps = load_manifest(root / MANIFEST_NAME)
     ledger = load_ledger(root / LEDGER_REL)
     reports = []
@@ -94,38 +100,48 @@ def cmd_status(root: Path, now: datetime, as_json: bool = False,
         reports.append((cap, entry, state, _capability_report(cap, entry, state, root)))
 
     blocking = [r["id"] for *_, r in reports if r["state"] in BLOCK_STATES]
-    rc = 1 if (check and blocking) else 0   # --check turns status into a CI gate
+    rc = 1 if (check and blocking) else 0  # --check turns status into a CI gate
 
     if as_json:
         summary: dict = {}
         for _, _, state, _ in reports:
             summary[state] = summary.get(state, 0) + 1
-        print(json.dumps({
-            "root": str(root),
-            "capabilities": [r for *_, r in reports],
-            "summary": summary,
-            "blocking": blocking,
-            "ok": not blocking,
-        }, indent=2))
+        print(
+            json.dumps(
+                {
+                    "root": str(root),
+                    "capabilities": [r for *_, r in reports],
+                    "summary": summary,
+                    "blocking": blocking,
+                    "ok": not blocking,
+                },
+                indent=2,
+            )
+        )
         return rc
 
     _print_warnings(caps)
-    for cap, entry, state, rep in reports:
+    for cap, _entry, state, rep in reports:
         label = _DISPLAY[state]
-        line = f"[{_GLYPH.get(label, '?'):5}] {cap.id:30} {label:12}{_fmt_duration(rep.get('duration'))}"
+        line = (
+            f"[{_GLYPH.get(label, '?'):5}] {cap.id:30} "
+            f"{label:12}{_fmt_duration(rep.get('duration'))}"
+        )
         if "changed" in rep:
             changed = rep["changed"]
             more = f", +{len(changed) - 3}" if len(changed) > 3 else ""
             line += f"  (changed: {', '.join(changed[:3])}{more})"
         print(line.rstrip())
     if check and blocking:
-        print(f"\nnot proven & fresh: {', '.join(blocking)} ({len(blocking)} blocking) "
-              f"— run: python -m caps verify --stale", file=sys.stderr)
+        print(
+            f"\nnot proven & fresh: {', '.join(blocking)} ({len(blocking)} blocking) "
+            f"— run: python -m caps verify --stale",
+            file=sys.stderr,
+        )
     return rc
 
 
-def cmd_verify(root: Path, now: datetime, only: Optional[str],
-               stale: bool = False) -> int:
+def cmd_verify(root: Path, now: datetime, only: str | None, stale: bool = False) -> int:
     caps = load_manifest(root / MANIFEST_NAME)
     _print_warnings(caps)
     ledger = load_ledger(root / LEDGER_REL)
@@ -136,8 +152,7 @@ def cmd_verify(root: Path, now: datetime, only: Optional[str],
             return 2
     elif stale:
         # Re-prove exactly the set the Stop-hook gate would block on, in one go.
-        caps = [c for c in caps
-                if capability_state(c, ledger.get(c.id), root, now) in BLOCK_STATES]
+        caps = [c for c in caps if capability_state(c, ledger.get(c.id), root, now) in BLOCK_STATES]
         if not caps:
             print("nothing stale — all capabilities are proven & fresh (or waived)")
             return 0
@@ -156,7 +171,7 @@ def cmd_verify(root: Path, now: datetime, only: Optional[str],
         if cap.freshness == "code":
             fmap = file_fingerprints(cap, root)
             if len(fmap) > FILE_MAP_LIMIT:
-                fmap = None   # broad glob: keep the ledger lean, skip itemizing
+                fmap = None  # broad glob: keep the ledger lean, skip itemizing
         updated[cap.id] = LedgerEntry(
             result=result,
             at=now.isoformat(),
@@ -215,16 +230,32 @@ def cmd_gate(stdin_text: str, now: datetime) -> int:
         payload = json.loads(stdin_text or "{}")
         decision = decide(payload, now)
     except Exception as e:  # fail open, but visibly
-        print(json.dumps({"hookSpecificOutput": {
-            "hookEventName": "Stop",
-            "additionalContext": f"caps gate failed: {e} — capability enforcement skipped this turn",
-        }}))
+        print(
+            json.dumps(
+                {
+                    "hookSpecificOutput": {
+                        "hookEventName": "Stop",
+                        "additionalContext": (
+                            f"caps gate failed: {e} — capability enforcement skipped this turn"
+                        ),
+                    }
+                }
+            )
+        )
         return 0
     if decision.block:
         print(json.dumps({"decision": "block", "reason": decision.reason}))
     elif decision.note:
-        print(json.dumps({"hookSpecificOutput": {
-            "hookEventName": "Stop", "additionalContext": decision.note}}))
+        print(
+            json.dumps(
+                {
+                    "hookSpecificOutput": {
+                        "hookEventName": "Stop",
+                        "additionalContext": decision.note,
+                    }
+                }
+            )
+        )
     return 0
 
 
@@ -236,11 +267,16 @@ def cmd_doctor(root: Path, now: datetime, settings_path, as_json: bool = False) 
     non-zero exit code if any are hard failures."""
     findings = diagnose(root, now, settings_path)
     if as_json:
-        print(json.dumps({
-            "root": str(root),
-            "findings": [{"level": f.level, "message": f.message} for f in findings],
-            "ok": exit_code(findings) == 0,
-        }, indent=2))
+        print(
+            json.dumps(
+                {
+                    "root": str(root),
+                    "findings": [{"level": f.level, "message": f.message} for f in findings],
+                    "ok": exit_code(findings) == 0,
+                },
+                indent=2,
+            )
+        )
         return exit_code(findings)
     print(f"caps doctor — {root}")
     for f in findings:
@@ -271,44 +307,72 @@ def cmd_init(target: str, force: bool, install_deps: bool) -> int:
     return 0
 
 
-def main(argv=None, cwd: Optional[str] = None) -> int:
+def main(argv=None, cwd: str | None = None) -> int:
     parser = argparse.ArgumentParser(prog="caps")
     sub = parser.add_subparsers(dest="command", required=True)
     st = sub.add_parser("status", help="show capability status (read-only)")
-    st.add_argument("--json", action="store_true",
-                    help="emit machine-readable JSON (state, detail, changed deps, blocking set)")
-    st.add_argument("--check", action="store_true",
-                    help="exit non-zero if any capability is unproven/failed/stale (CI gate)")
+    st.add_argument(
+        "--json",
+        action="store_true",
+        help="emit machine-readable JSON (state, detail, changed deps, blocking set)",
+    )
+    st.add_argument(
+        "--check",
+        action="store_true",
+        help="exit non-zero if any capability is unproven/failed/stale (CI gate)",
+    )
     v = sub.add_parser("verify", help="run checks and record proof")
     vsel = v.add_mutually_exclusive_group()
-    vsel.add_argument("--capability", dest="only", default=None,
-                      help="verify a single capability by id")
-    vsel.add_argument("--stale", action="store_true",
-                      help="re-prove only the capabilities the gate would block on")
+    vsel.add_argument(
+        "--capability", dest="only", default=None, help="verify a single capability by id"
+    )
+    vsel.add_argument(
+        "--stale",
+        action="store_true",
+        help="re-prove only the capabilities the gate would block on",
+    )
     a = sub.add_parser("ack", help="record a time-boxed waiver for a capability")
     a.add_argument("capability", help="capability id to waive")
     a.add_argument("--reason", required=True, help="why it can't be proven now")
-    a.add_argument("--for", dest="for_", default="24h",
-                   help="waiver duration, e.g. 24h (default), 2d, 30m")
+    a.add_argument(
+        "--for", dest="for_", default="24h", help="waiver duration, e.g. 24h (default), 2d, 30m"
+    )
     sub.add_parser("gate", help="Stop-hook gate: read hook JSON on stdin, emit allow/block")
     doc = sub.add_parser("doctor", help="diagnose project setup (manifest, checks, ledger, hook)")
-    doc.add_argument("--settings", default=None,
-                     help="settings.json to check for the Stop hook (default: ~/.claude/settings.json)")
+    doc.add_argument(
+        "--settings",
+        default=None,
+        help="settings.json to check for the Stop hook (default: ~/.claude/settings.json)",
+    )
     doc.add_argument("--json", action="store_true", help="emit machine-readable JSON")
     ih = sub.add_parser("install-hook", help="register the Stop-hook gate in settings.json")
     ih.add_argument("--settings", default=str(Path.home() / ".claude" / "settings.json"))
-    ih.add_argument("--command", dest="hook_command", default=None,
-                    help="hook command (defaults to this kit's bin/caps-stop-gate.sh)")
+    ih.add_argument(
+        "--command",
+        dest="hook_command",
+        default=None,
+        help="hook command (defaults to this kit's bin/caps-stop-gate.sh)",
+    )
     uh = sub.add_parser("uninstall-hook", help="remove the Stop-hook gate from settings.json")
     uh.add_argument("--settings", default=str(Path.home() / ".claude" / "settings.json"))
 
-    sub.add_parser("ponytail", help="print the 'lazy senior dev' posture (what the SessionStart hook injects)")
-    sub.add_parser("review", help="print the over-engineering review rubric (apply it to the diff under review)")
-    ip = sub.add_parser("install-ponytail",
-                        help="register a SessionStart hook that injects the ponytail posture")
+    sub.add_parser(
+        "ponytail", help="print the 'lazy senior dev' posture (what the SessionStart hook injects)"
+    )
+    sub.add_parser(
+        "review",
+        help="print the over-engineering review rubric (apply it to the diff under review)",
+    )
+    ip = sub.add_parser(
+        "install-ponytail", help="register a SessionStart hook that injects the ponytail posture"
+    )
     ip.add_argument("--settings", default=str(Path.home() / ".claude" / "settings.json"))
-    ip.add_argument("--command", dest="hook_command", default=None,
-                    help="hook command (defaults to this kit's bin/caps-ponytail.sh)")
+    ip.add_argument(
+        "--command",
+        dest="hook_command",
+        default=None,
+        help="hook command (defaults to this kit's bin/caps-ponytail.sh)",
+    )
     up = sub.add_parser("uninstall-ponytail", help="remove the ponytail SessionStart hook")
     up.add_argument("--settings", default=str(Path.home() / ".claude" / "settings.json"))
 
@@ -319,8 +383,7 @@ def main(argv=None, cwd: Optional[str] = None) -> int:
     ad.add_argument("--when", required=True)
     ad.add_argument("--then", required=True)
     ad.add_argument("--tier", required=True, choices=["cheap", "live"])
-    ad.add_argument("--deps", action="append", default=[],
-                    help="dep glob (repeat for multiple)")
+    ad.add_argument("--deps", action="append", default=[], help="dep glob (repeat for multiple)")
     grp = ad.add_mutually_exclusive_group(required=True)
     grp.add_argument("--check", help="pytest node, e.g. checks/test_x.py::test_x")
     grp.add_argument("--shell", help="shell command; exit 0 = proven")
@@ -328,13 +391,18 @@ def main(argv=None, cwd: Optional[str] = None) -> int:
 
     ini = sub.add_parser("init", help="vendor the framework into a project (drop-in installer)")
     ini.add_argument("--target", default=None, help="target dir (default: cwd)")
-    ini.add_argument("--force", action="store_true",
-                     help="re-overwrite vendored ctk/caps/bin (never user files)")
-    ini.add_argument("--install-deps", dest="install_deps", action="store_true",
-                     help="pip-install PyYAML into the active environment")
+    ini.add_argument(
+        "--force", action="store_true", help="re-overwrite vendored ctk/caps/bin (never user files)"
+    )
+    ini.add_argument(
+        "--install-deps",
+        dest="install_deps",
+        action="store_true",
+        help="pip-install PyYAML into the active environment",
+    )
 
     args = parser.parse_args(argv)
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     if args.command == "gate":
         return cmd_gate(sys.stdin.read(), now)
@@ -343,8 +411,11 @@ def main(argv=None, cwd: Optional[str] = None) -> int:
         cmd = args.hook_command or str(kit / "bin" / "caps-stop-gate.sh")
         venv_py = kit / ".venv" / "bin" / "python"
         if not venv_py.exists():
-            print(f"warning: {venv_py} not found — run ./run_tests.sh once so the "
-                  f"hook has an interpreter (gate will fail open until then)", file=sys.stderr)
+            print(
+                f"warning: {venv_py} not found — run ./run_tests.sh once so the "
+                f"hook has an interpreter (gate will fail open until then)",
+                file=sys.stderr,
+            )
         install_hook(args.settings, command=cmd)
         print(f"installed Stop-hook gate -> {args.settings}")
         return 0
@@ -363,11 +434,18 @@ def main(argv=None, cwd: Optional[str] = None) -> int:
         cmd = args.hook_command or str(kit / "bin" / "caps-ponytail.sh")
         venv_py = kit / ".venv" / "bin" / "python"
         if not venv_py.exists():
-            print(f"warning: {venv_py} not found — run ./run_tests.sh once so the "
-                  f"hook has an interpreter (posture stays silent until then)", file=sys.stderr)
-        install_hook(args.settings, command=cmd,
-                     event="SessionStart", tag=PONYTAIL_TAG,
-                     matcher="startup|resume|clear|compact")
+            print(
+                f"warning: {venv_py} not found — run ./run_tests.sh once so the "
+                f"hook has an interpreter (posture stays silent until then)",
+                file=sys.stderr,
+            )
+        install_hook(
+            args.settings,
+            command=cmd,
+            event="SessionStart",
+            tag=PONYTAIL_TAG,
+            matcher="startup|resume|clear|compact",
+        )
         print(f"installed ponytail SessionStart hook -> {args.settings}")
         return 0
     if args.command == "uninstall-ponytail":
@@ -383,9 +461,16 @@ def main(argv=None, cwd: Optional[str] = None) -> int:
             manifest_path = (find_root(start) or start) / MANIFEST_NAME
         try:
             add_capability(
-                manifest_path, id=args.id, description=args.description,
-                given=args.given, when=args.when, then=args.then,
-                tier=args.tier, deps=args.deps, check=args.check, shell=args.shell,
+                manifest_path,
+                id=args.id,
+                description=args.description,
+                given=args.given,
+                when=args.when,
+                then=args.then,
+                tier=args.tier,
+                deps=args.deps,
+                check=args.check,
+                shell=args.shell,
             )
         except (ManifestEditError, ManifestError) as e:
             print(f"error: {e}", file=sys.stderr)

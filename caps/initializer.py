@@ -5,11 +5,10 @@ import subprocess
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Union
 
 _IGNORE = shutil.ignore_patterns("__pycache__", "*.pyc", "*.pyo")
 FRAMEWORK_DIRS = ("ctk", "caps")
-WRAPPER_RELS = (   # drop-in hook wrappers, merged into bin/ (never owning the dir)
+WRAPPER_RELS = (  # drop-in hook wrappers, merged into bin/ (never owning the dir)
     Path("bin") / "caps-stop-gate.sh",
     Path("bin") / "caps-ponytail.sh",
 )
@@ -28,6 +27,7 @@ class StepResult:
     action is one of: created | skipped | overwritten | warned | installed
                       | instructed
     """
+
     action: str
     target: str
     detail: str = ""
@@ -62,14 +62,14 @@ def _vendor_wrapper(kit: Path, target: Path, force: bool, rel: Path) -> StepResu
     existed = dst.exists()
     if existed and not force:
         return StepResult("skipped", str(dst), f"bin/{name} already present")
-    dst.parent.mkdir(parents=True, exist_ok=True)   # merge into existing bin/, never rmtree
+    dst.parent.mkdir(parents=True, exist_ok=True)  # merge into existing bin/, never rmtree
     shutil.copy2(src, dst)
     if existed:
         return StepResult("overwritten", str(dst), f"re-vendored bin/{name} (--force)")
     return StepResult("created", str(dst), f"vendored bin/{name}")
 
 
-def ensure_conftest(target: Union[str, Path], kit: Union[str, Path]) -> StepResult:
+def ensure_conftest(target: str | Path, kit: str | Path) -> StepResult:
     target, kit = Path(target), Path(kit)
     dst = target / "conftest.py"
     if dst.exists():
@@ -102,16 +102,15 @@ def _has_pytest_config(target: Path) -> bool:
     if sc.is_file() and "[tool:pytest]" in sc.read_text():
         return True
     tox = target / "tox.ini"
-    if tox.is_file() and "[pytest]" in tox.read_text():
-        return True
-    return False
+    return tox.is_file() and "[pytest]" in tox.read_text()
 
 
-def ensure_pytest_config(target: Union[str, Path]) -> StepResult:
+def ensure_pytest_config(target: str | Path) -> StepResult:
     target = Path(target)
     if _has_pytest_config(target):
         return StepResult(
-            "skipped", str(target),
+            "skipped",
+            str(target),
             "existing pytest config found; ensure it sets `pythonpath = .` and the "
             "unit/integration/slow/allow_error_logs markers (see the kit's pytest.ini)",
         )
@@ -141,7 +140,7 @@ capabilities:
 """
 
 
-def ensure_starter_manifest(target: Union[str, Path]) -> list[StepResult]:
+def ensure_starter_manifest(target: str | Path) -> list[StepResult]:
     target = Path(target)
     results: list[StepResult] = []
 
@@ -166,7 +165,7 @@ def ensure_starter_manifest(target: Union[str, Path]) -> list[StepResult]:
 _GITIGNORE_ENTRIES = (".venv/", "__pycache__/", ".pytest_cache/", "*.bak.*")
 
 
-def ensure_gitignore(target: Union[str, Path]) -> StepResult:
+def ensure_gitignore(target: str | Path) -> StepResult:
     target = Path(target)
     gi = target / ".gitignore"
     existing = gi.read_text() if gi.exists() else ""
@@ -178,13 +177,14 @@ def ensure_gitignore(target: Union[str, Path]) -> StepResult:
     block = "" if existing == "" else (existing if existing.endswith("\n") else existing + "\n")
     block += "\n# caps / python artifacts (added by caps init)\n" + "\n".join(missing) + "\n"
     gi.write_text(block)
-    return StepResult("created", str(gi), f"added {len(missing)} .gitignore entr"
-                      f"{'y' if len(missing) == 1 else 'ies'}")
+    return StepResult(
+        "created",
+        str(gi),
+        f"added {len(missing)} .gitignore entr{'y' if len(missing) == 1 else 'ies'}",
+    )
 
 
-def vendor_framework(
-    target: Union[str, Path], kit: Union[str, Path], force: bool
-) -> list[StepResult]:
+def vendor_framework(target: str | Path, kit: str | Path, force: bool) -> list[StepResult]:
     target, kit = Path(target), Path(kit)
     if force and target.resolve() == kit.resolve():
         raise ValueError("init --force target is the kit itself; refusing to overwrite the source")
@@ -212,9 +212,9 @@ def maybe_install_pyyaml(install_deps: bool) -> StepResult:
 
 
 def init_project(
-    target: Union[str, Path],
+    target: str | Path,
     *,
-    kit: Union[str, Path, None] = None,
+    kit: str | Path | None = None,
     force: bool = False,
     install_deps: bool = False,
 ) -> list[StepResult]:

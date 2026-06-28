@@ -3,23 +3,22 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
 
-from .project import MANIFEST_NAME, LEDGER_REL, find_root
-from .manifest import load_manifest
-from .ledger import load_ledger
-from .state import capability_state, BLOCK_STATES
 from .fingerprint import changed_deps
+from .ledger import load_ledger
+from .manifest import load_manifest
+from .project import LEDGER_REL, MANIFEST_NAME, find_root
+from .state import BLOCK_STATES, capability_state
 
 
 @dataclass
 class GateDecision:
     block: bool
-    reason: Optional[str] = None   # shown to Claude when block is True
-    note: Optional[str] = None     # non-blocking additionalContext
+    reason: str | None = None  # shown to Claude when block is True
+    note: str | None = None  # non-blocking additionalContext
 
 
-def resolve_root(payload: dict) -> Optional[Path]:
+def resolve_root(payload: dict) -> Path | None:
     cwd = payload.get("cwd")
     if cwd:
         r = find_root(Path(cwd))
@@ -72,8 +71,8 @@ def decide(payload: dict, now: datetime) -> GateDecision:
     caps = load_manifest(root / MANIFEST_NAME)
     ledger = load_ledger(root / LEDGER_REL)
 
-    blocking: list[tuple] = []   # (cap, state, entry)
-    expired: list = []           # cap
+    blocking: list[tuple] = []  # (cap, state, entry)
+    expired: list = []  # cap
     for cap in caps:
         entry = ledger.get(cap.id)
         state = capability_state(cap, entry, root, now)
@@ -99,6 +98,8 @@ def decide(payload: dict, now: datetime) -> GateDecision:
     if note:
         lines.append(f"  (note) {note}")
     lines.append("Re-prove all of the above:  python -m caps verify --stale")
-    lines.append("Full status: python -m caps status   ·   "
-                 "can't prove now? python -m caps ack <id> --reason \"...\"")
+    lines.append(
+        "Full status: python -m caps status   ·   "
+        'can\'t prove now? python -m caps ack <id> --reason "..."'
+    )
     return GateDecision(block=True, reason="\n".join(lines), note=note)

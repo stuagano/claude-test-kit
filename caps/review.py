@@ -9,6 +9,7 @@ it at a diff and it lists what to cut. The idea, not the Node.js machinery.
 under review. Scope is complexity only — correctness and security route to a
 normal review pass, not this one.
 """
+
 from __future__ import annotations
 
 RUBRIC = """\

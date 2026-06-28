@@ -3,12 +3,11 @@ from __future__ import annotations
 import os
 import tempfile
 from pathlib import Path
-from typing import Optional, Union
 
 import yaml
 
 from .backup import backup_file
-from .manifest import load_manifest, ManifestError
+from .manifest import ManifestError, load_manifest
 
 HEADER = (
     "# Capabilities this project promises — managed with `caps`.\n"
@@ -69,7 +68,7 @@ def _scaffold_stub(root: Path, check: str, cap_id: str) -> None:
 
 
 def add_capability(
-    manifest_path: Union[str, Path],
+    manifest_path: str | Path,
     *,
     id: str,
     description: str,
@@ -78,8 +77,8 @@ def add_capability(
     then: str,
     tier: str,
     deps: list[str],
-    check: Optional[str] = None,
-    shell: Optional[str] = None,
+    check: str | None = None,
+    shell: str | None = None,
 ) -> None:
     manifest_path = Path(manifest_path)
     if (check is None) == (shell is None):
@@ -95,12 +94,19 @@ def add_capability(
     else:
         existing_text = HEADER
 
-    entry: dict = {"id": id, "description": description, "given": given,
-                   "when": when, "then": then, "tier": tier, "deps": list(deps)}
+    entry: dict = {
+        "id": id,
+        "description": description,
+        "given": given,
+        "when": when,
+        "then": then,
+        "tier": tier,
+        "deps": list(deps),
+    }
     entry["check"] = check if check is not None else {"shell": shell}
 
     candidate_text = existing_text + _entry_block(entry) + "\n"
-    _validate_candidate(candidate_text, id)   # raises if bad; disk still untouched
+    _validate_candidate(candidate_text, id)  # raises if bad; disk still untouched
 
     if manifest_path.exists():
         backup_file(manifest_path)

@@ -1,16 +1,24 @@
 from pathlib import Path
 
 import pytest
+
+from caps.fingerprint import changed_deps, file_fingerprints, fingerprint
 from caps.manifest import Capability
-from caps.fingerprint import fingerprint, file_fingerprints, changed_deps
 
 
 def _cap(**kw):
-    base = dict(
-        id="c", description="d", given="g", when="w", then="t",
-        tier="cheap", deps=[], freshness="code",
-        check_kind="pytest", check_target="checks/test_x.py::test_x",
-    )
+    base = {
+        "id": "c",
+        "description": "d",
+        "given": "g",
+        "when": "w",
+        "then": "t",
+        "tier": "cheap",
+        "deps": [],
+        "freshness": "code",
+        "check_kind": "pytest",
+        "check_target": "checks/test_x.py::test_x",
+    }
     base.update(kw)
     return Capability(**base)
 
@@ -82,7 +90,7 @@ def test_changed_deps_names_the_modified_file(tmp_path):
     (tmp_path / "b.py").write_text("b = 1\n")
     cap = _cap(deps=["a.py", "b.py"])
     recorded = file_fingerprints(cap, tmp_path)
-    (tmp_path / "b.py").write_text("b = 2\n")   # only b changes
+    (tmp_path / "b.py").write_text("b = 2\n")  # only b changes
     assert changed_deps(cap, recorded, tmp_path) == ["b.py"]
 
 
@@ -93,7 +101,7 @@ def test_out_of_root_dep_key_is_relative_not_absolute(tmp_path):
     root = tmp_path / "proj"
     (root / "checks").mkdir(parents=True)
     (root / "checks" / "test_x.py").write_text("def test_x(): pass\n")
-    (tmp_path / "sibling.py").write_text("s = 1\n")   # lives outside root
+    (tmp_path / "sibling.py").write_text("s = 1\n")  # lives outside root
     cap = _cap(deps=["../sibling.py"])
     keys = set(file_fingerprints(cap, root))
     assert "checks/test_x.py" in keys

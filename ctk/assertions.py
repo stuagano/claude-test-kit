@@ -34,8 +34,11 @@ def assert_eq(actual: Any, expected: Any, message: str = "") -> None:
 
 
 def assert_nonempty(value: Any, message: str = "value") -> None:
-    empty = value is None or (hasattr(value, "__len__") and len(value) == 0) or \
-        (isinstance(value, str) and not value.strip())
+    empty = (
+        value is None
+        or (hasattr(value, "__len__") and len(value) == 0)
+        or (isinstance(value, str) and not value.strip())
+    )
     if empty:
         raise CheckError(f"{message} was empty/None (looked successful but had no content)")
 
@@ -56,7 +59,7 @@ def assert_file(
             f"likely a silent failure that created an empty file"
         )
     if must_contain is not None:
-        with open(path, "r", errors="replace") as f:
+        with open(path, errors="replace") as f:
             data = f.read()
         if must_contain not in data:
             raise CheckError(f"file {path} does not contain expected text {must_contain!r}")

@@ -12,7 +12,8 @@ from __future__ import annotations
 
 import json
 import re
-from typing import Any, Iterable, Optional
+from collections.abc import Iterable
+from typing import Any
 
 
 class ContractError(AssertionError):
@@ -34,7 +35,7 @@ class Expect:
         self._json_done = False
 
     # ----- core recording -----
-    def _check(self, ok: bool, msg: str) -> "Expect":
+    def _check(self, ok: bool, msg: str) -> Expect:
         if not ok:
             self._failures.append(f"[{self.label}] {msg}")
         return self
@@ -47,40 +48,43 @@ class Expect:
         return f"\n--- actual ---\n{s}\n--------------"
 
     # ----- string / generic checks -----
-    def nonempty(self) -> "Expect":
+    def nonempty(self) -> Expect:
         v = self.value
-        empty = v is None or (hasattr(v, "__len__") and len(v) == 0) or \
-            (isinstance(v, str) and not v.strip())
+        empty = (
+            v is None
+            or (hasattr(v, "__len__") and len(v) == 0)
+            or (isinstance(v, str) and not v.strip())
+        )
         return self._check(not empty, "expected non-empty value")
 
-    def equals(self, other: Any) -> "Expect":
+    def equals(self, other: Any) -> Expect:
         return self._check(self.value == other, f"expected == {other!r}")
 
-    def contains(self, sub: Any) -> "Expect":
+    def contains(self, sub: Any) -> Expect:
         try:
             ok = sub in self.value
         except TypeError:
             ok = False
         return self._check(ok, f"expected to contain {sub!r}")
 
-    def matches(self, pattern: str) -> "Expect":
+    def matches(self, pattern: str) -> Expect:
         ok = isinstance(self.value, str) and re.search(pattern, self.value) is not None
         return self._check(ok, f"expected to match /{pattern}/")
 
-    def not_matches(self, pattern: str) -> "Expect":
+    def not_matches(self, pattern: str) -> Expect:
         ok = not (isinstance(self.value, str) and re.search(pattern, self.value))
         return self._check(ok, f"expected NOT to match /{pattern}/")
 
-    def min_len(self, n: int) -> "Expect":
+    def min_len(self, n: int) -> Expect:
         ok = hasattr(self.value, "__len__") and len(self.value) >= n
         got = len(self.value) if hasattr(self.value, "__len__") else "n/a"
         return self._check(ok, f"expected length >= {n}, got {got}")
 
-    def one_of(self, options: Iterable[Any]) -> "Expect":
+    def one_of(self, options: Iterable[Any]) -> Expect:
         opts = list(options)
         return self._check(self.value in opts, f"expected one of {opts!r}")
 
-    def satisfies(self, predicate, desc: str = "custom predicate") -> "Expect":
+    def satisfies(self, predicate, desc: str = "custom predicate") -> Expect:
         try:
             ok = bool(predicate(self.value))
         except Exception as e:  # noqa: BLE001 - report, don't swallow
@@ -89,16 +93,18 @@ class Expect:
         return self._check(ok, f"expected to satisfy: {desc}")
 
     # ----- JSON checks -----
-    def is_json(self) -> "Expect":
+    def is_json(self) -> Expect:
         try:
-            self._parsed_json = json.loads(self.value) if isinstance(self.value, str) else self.value
+            self._parsed_json = (
+                json.loads(self.value) if isinstance(self.value, str) else self.value
+            )
             self._json_done = True
             return self._check(True, "")
         except (json.JSONDecodeError, TypeError) as e:
             self._json_done = False
             return self._check(False, f"expected valid JSON ({e})")
 
-    def has_keys(self, *keys: str) -> "Expect":
+    def has_keys(self, *keys: str) -> Expect:
         obj = self._parsed_json if self._json_done else self.value
         if not isinstance(obj, dict):
             return self._check(False, f"expected a JSON object to check keys {keys}")
@@ -110,9 +116,7 @@ class Expect:
         """Raise ContractError with every accumulated failure. Returns value."""
         if self._failures:
             raise ContractError(
-                "output contract failed:\n  - "
-                + "\n  - ".join(self._failures)
-                + self._context()
+                "output contract failed:\n  - " + "\n  - ".join(self._failures) + self._context()
             )
         return self.value
 

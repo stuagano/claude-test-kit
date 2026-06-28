@@ -1,14 +1,22 @@
 import pytest
+
 from caps.manifest import Capability
 from caps.runner import run_capability
 
 
 def _cap(**kw):
-    base = dict(
-        id="c", description="d", given="g", when="w", then="t",
-        tier="cheap", deps=[], freshness="code",
-        check_kind="shell", check_target="true",
-    )
+    base = {
+        "id": "c",
+        "description": "d",
+        "given": "g",
+        "when": "w",
+        "then": "t",
+        "tier": "cheap",
+        "deps": [],
+        "freshness": "code",
+        "check_kind": "shell",
+        "check_target": "true",
+    }
     base.update(kw)
     return Capability(**base)
 
@@ -69,7 +77,8 @@ def test_pytest_skip_is_error_not_pass(tmp_path):
     # never a false green.
     (tmp_path / "checks").mkdir()
     (tmp_path / "checks" / "test_skip.py").write_text(
-        "import pytest\ndef test_skip():\n    pytest.skip('cannot run here')\n")
+        "import pytest\ndef test_skip():\n    pytest.skip('cannot run here')\n"
+    )
     cap = _cap(check_kind="pytest", check_target="checks/test_skip.py::test_skip")
     result, _, _ = run_capability(cap, tmp_path)
     assert result == "error"
