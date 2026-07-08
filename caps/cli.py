@@ -120,6 +120,18 @@ def _format_evidence(rep: dict) -> str:
     return "\n".join(lines)
 
 
+def _require_capability(caps, cap_id: str):
+    """Find one capability by id in an already-loaded manifest list. Prints the
+    standard 'no capability' error and returns None if it's absent — shared by
+    every command that looks up a single capability (ack, evidence, verify
+    --capability)."""
+    by_id = {c.id: c for c in caps}
+    if cap_id not in by_id:
+        print(f"error: no capability with id {cap_id!r}", file=sys.stderr)
+        return None
+    return by_id[cap_id]
+
+
 def cmd_status(root: Path, now: datetime, as_json: bool = False,
                check: bool = False) -> int:
     caps = load_manifest(root / MANIFEST_NAME)
@@ -167,10 +179,10 @@ def cmd_verify(root: Path, now: datetime, only: Optional[str],
     _print_warnings(caps)
     ledger = load_ledger(root / LEDGER_REL)
     if only is not None:
-        caps = [c for c in caps if c.id == only]
-        if not caps:
-            print(f"error: no capability with id {only!r}", file=sys.stderr)
+        cap = _require_capability(caps, only)
+        if cap is None:
             return 2
+        caps = [cap]
     elif stale:
         # Re-prove exactly the set the Stop-hook gate would block on, in one go.
         caps = [c for c in caps
@@ -229,16 +241,16 @@ def cmd_verify(root: Path, now: datetime, only: Optional[str],
 
 
 def cmd_ack(root: Path, now: datetime, cap_id: str, reason: str, for_: str) -> int:
-    caps = {c.id: c for c in load_manifest(root / MANIFEST_NAME)}
-    if cap_id not in caps:
-        print(f"error: no capability with id {cap_id!r}", file=sys.stderr)
+    caps = load_manifest(root / MANIFEST_NAME)
+    cap = _require_capability(caps, cap_id)
+    if cap is None:
         return 2
     until = (now + parse_duration(for_)).isoformat()
     ledger = load_ledger(root / LEDGER_REL)
     ledger[cap_id] = LedgerEntry(
         result="waived",
         at=now.isoformat(),
-        tier=caps[cap_id].tier,
+        tier=cap.tier,
         fingerprint=None,
         waiver={"reason": reason, "until": until},
     )
@@ -248,11 +260,10 @@ def cmd_ack(root: Path, now: datetime, cap_id: str, reason: str, for_: str) -> i
 
 
 def cmd_evidence(root: Path, now: datetime, cap_id: str, as_json: bool = False) -> int:
-    caps = {c.id: c for c in load_manifest(root / MANIFEST_NAME)}
-    if cap_id not in caps:
-        print(f"error: no capability with id {cap_id!r}", file=sys.stderr)
+    caps = load_manifest(root / MANIFEST_NAME)
+    cap = _require_capability(caps, cap_id)
+    if cap is None:
         return 2
-    cap = caps[cap_id]
     ledger = load_ledger(root / LEDGER_REL)
     entry = ledger.get(cap.id)
     state = capability_state(cap, entry, root, now)
