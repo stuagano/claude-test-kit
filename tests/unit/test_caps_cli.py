@@ -657,3 +657,157 @@ def test_init_force_onto_kit_errors_cleanly(capsys):
     assert rc == 2
     assert "error:" in captured.err
     assert "refusing to overwrite the source" in captured.err
+
+
+def _field(label: str, value: str) -> str:
+    # Mirrors caps/cli.py's _EVIDENCE_LABEL_WIDTH (13 = len("description:") + 1)
+    # so these assertions can't drift from the implementation by a hand-typo'd space.
+    return f"{label + ':':<13}{value}"
+
+
+@pytest.mark.unit
+def test_evidence_prints_proven_capability(tmp_path, capsys):
+    p = _project(tmp_path, """
+        capabilities:
+          - id: writes-db
+            description: the ingest job writes rows and they read back
+            given: a reachable database
+            when: the ingest job runs
+            then: the written rows are readable back
+            tier: cheap
+            deps: []
+            check: checks/test_writes_db.py::test_writes_db
+    """)
+    (p / "checks" / "test_writes_db.py").write_text(
+        "def test_writes_db():\n    assert True\n"
+    )
+    main(["verify"], cwd=str(p))
+    capsys.readouterr()  # discard verify output
+    rc = main(["evidence", "writes-db"], cwd=str(p))
+    out = capsys.readouterr().out
+    assert rc == 0
+    assert _field("id", "writes-db") in out
+    assert _field("description", "the ingest job writes rows and they read back") in out
+    assert _field("given", "a reachable database") in out
+    assert _field("when", "the ingest job runs") in out
+    assert _field("then", "the written rows are readable back") in out
+    assert _field("tier", "cheap") in out
+    assert _field("check", "checks/test_writes_db.py::test_writes_db") in out
+    assert _field("state", "proven") in out
+    assert "at:" in out
+    assert "duration:" in out
+    assert "detail:" not in out
+    assert "waiver:" not in out
+
+
+@pytest.mark.unit
+def test_evidence_prints_waiver_reason(tmp_path, capsys):
+    p = _project(tmp_path, """
+        capabilities:
+          - id: live-cap
+            description: x
+            given: g
+            when: w
+            then: t
+            tier: live
+            deps: []
+            check: checks/test_x.py::test_x
+    """)
+    main(["ack", "live-cap", "--reason", "offline, no infra"], cwd=str(p))
+    capsys.readouterr()
+    rc = main(["evidence", "live-cap"], cwd=str(p))
+    out = capsys.readouterr().out
+    assert rc == 0
+    assert _field("state", "waived") in out
+    assert _field("waiver", "offline, no infra (until") in out
+
+
+@pytest.mark.unit
+def test_evidence_prints_failure_detail(tmp_path, capsys):
+    p = _project(tmp_path, """
+        capabilities:
+          - id: bad-cap
+            description: x
+            given: g
+            when: w
+            then: t
+            tier: cheap
+            deps: []
+            check: checks/test_bad.py::test_bad
+    """)
+    (p / "checks" / "test_bad.py").write_text("def test_bad():\n    assert False\n")
+    main(["verify"], cwd=str(p))
+    capsys.readouterr()
+    rc = main(["evidence", "bad-cap"], cwd=str(p))
+    out = capsys.readouterr().out
+    assert rc == 0
+    assert _field("state", "fail") in out
+    assert "detail:" in out and "test_bad" in out
+
+
+@pytest.mark.unit
+def test_evidence_never_proven_has_no_at_or_duration(tmp_path, capsys):
+    p = _project(tmp_path, """
+        capabilities:
+          - id: fresh-cap
+            description: x
+            given: g
+            when: w
+            then: t
+            tier: cheap
+            deps: []
+            check: checks/test_x.py::test_x
+    """)
+    rc = main(["evidence", "fresh-cap"], cwd=str(p))
+    out = capsys.readouterr().out
+    assert rc == 0
+    assert _field("state", "never-proven") in out
+    assert "at:" not in out
+    assert "duration:" not in out
+
+
+@pytest.mark.unit
+def test_evidence_unknown_id_errors(tmp_path, capsys):
+    _project(tmp_path, """
+        capabilities:
+          - id: real
+            description: x
+            given: g
+            when: w
+            then: t
+            tier: cheap
+            deps: []
+            check: checks/test_x.py::test_x
+    """)
+    rc = main(["evidence", "ghost"], cwd=str(tmp_path))
+    err = capsys.readouterr().err
+    assert rc == 2
+    assert "no capability with id" in err
+    assert "ghost" in err
+
+
+@pytest.mark.unit
+def test_evidence_json_round_trips(tmp_path, capsys):
+    p = _project(tmp_path, """
+        capabilities:
+          - id: writes-db
+            description: d
+            given: g
+            when: w
+            then: t
+            tier: cheap
+            deps: []
+            check: checks/test_ok.py::test_ok
+    """)
+    (p / "checks" / "test_ok.py").write_text("def test_ok():\n    assert True\n")
+    main(["verify"], cwd=str(p))
+    capsys.readouterr()
+    rc = main(["evidence", "writes-db", "--json"], cwd=str(p))
+    doc = _json.loads(capsys.readouterr().out)
+    assert rc == 0
+    assert doc["id"] == "writes-db"
+    assert doc["description"] == "d"
+    assert doc["given"] == "g" and doc["when"] == "w" and doc["then"] == "t"
+    assert doc["check"] == "checks/test_ok.py::test_ok"
+    assert doc["state"] == "proven"
+    assert "at" in doc and "duration" in doc

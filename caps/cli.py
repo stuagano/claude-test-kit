@@ -83,6 +83,43 @@ def _capability_report(cap, entry, state, root) -> dict:
     return rep
 
 
+_EVIDENCE_FIELD_ORDER = [
+    "id", "description", "given", "when", "then", "tier", "check",
+    "state", "at", "duration", "detail", "waiver", "changed",
+]
+_EVIDENCE_LABEL_WIDTH = 13  # len("description:") + 1, the longest label
+
+
+def _evidence_report(cap, entry, state, root) -> dict:
+    """The full citable contract for one capability: `_capability_report`'s
+    proof fields plus the manifest fields evidence needs but status never
+    printed (description/given/when/check)."""
+    rep = _capability_report(cap, entry, state, root)
+    rep["description"] = cap.description
+    rep["given"] = cap.given
+    rep["when"] = cap.when
+    rep["check"] = cap.check_target
+    return rep
+
+
+def _format_evidence(rep: dict) -> str:
+    lines = []
+    for key in _EVIDENCE_FIELD_ORDER:
+        if key not in rep:
+            continue
+        label = f"{key}:".ljust(_EVIDENCE_LABEL_WIDTH)
+        if key == "waiver":
+            w = rep["waiver"]
+            lines.append(f"{label}{w['reason']} (until {w['until']})")
+        elif key == "duration":
+            lines.append(f"{label}{rep['duration']:.2f}s")
+        elif key == "changed":
+            lines.append(f"{label}{', '.join(rep['changed'])}")
+        else:
+            lines.append(f"{label}{rep[key]}")
+    return "\n".join(lines)
+
+
 def cmd_status(root: Path, now: datetime, as_json: bool = False,
                check: bool = False) -> int:
     caps = load_manifest(root / MANIFEST_NAME)
@@ -210,6 +247,23 @@ def cmd_ack(root: Path, now: datetime, cap_id: str, reason: str, for_: str) -> i
     return 0
 
 
+def cmd_evidence(root: Path, now: datetime, cap_id: str, as_json: bool = False) -> int:
+    caps = {c.id: c for c in load_manifest(root / MANIFEST_NAME)}
+    if cap_id not in caps:
+        print(f"error: no capability with id {cap_id!r}", file=sys.stderr)
+        return 2
+    cap = caps[cap_id]
+    ledger = load_ledger(root / LEDGER_REL)
+    entry = ledger.get(cap.id)
+    state = capability_state(cap, entry, root, now)
+    rep = _evidence_report(cap, entry, state, root)
+    if as_json:
+        print(json.dumps(rep, indent=2))
+    else:
+        print(_format_evidence(rep))
+    return 0
+
+
 def cmd_gate(stdin_text: str, now: datetime) -> int:
     try:
         payload = json.loads(stdin_text or "{}")
@@ -290,6 +344,9 @@ def main(argv=None, cwd: Optional[str] = None) -> int:
     a.add_argument("--reason", required=True, help="why it can't be proven now")
     a.add_argument("--for", dest="for_", default="24h",
                    help="waiver duration, e.g. 24h (default), 2d, 30m")
+    ev = sub.add_parser("evidence", help="print a capability's contract + proof (for citing in docs)")
+    ev.add_argument("capability", help="capability id")
+    ev.add_argument("--json", action="store_true", help="emit machine-readable JSON")
     sub.add_parser("gate", help="Stop-hook gate: read hook JSON on stdin, emit allow/block")
     doc = sub.add_parser("doctor", help="diagnose project setup (manifest, checks, ledger, hook)")
     doc.add_argument("--settings", default=None,
@@ -410,6 +467,8 @@ def main(argv=None, cwd: Optional[str] = None) -> int:
             return cmd_verify(root, now, args.only, args.stale)
         if args.command == "ack":
             return cmd_ack(root, now, args.capability, args.reason, args.for_)
+        if args.command == "evidence":
+            return cmd_evidence(root, now, args.capability, args.json)
         if args.command == "doctor":
             return cmd_doctor(root, now, args.settings, args.json)
     except (ManifestError, FreshnessError) as e:
