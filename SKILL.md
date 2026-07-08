@@ -133,6 +133,17 @@ the DB" when we actually can't.
    `python -m caps verify --capability <id>` to actually prove it. You are
    advisory: never add a capability without the user's explicit yes.
 
+3. **If you're documenting a solved problem that involves a proven capability**
+   (e.g. via `/ce-compound` or any similar knowledge-capture workflow) — run
+   `python -m caps evidence <id>` and fold the relevant fields into the doc's
+   body instead of re-deriving whether it actually works from scratch. There's
+   no frontmatter slot for this (a doc schema like `ce-compound`'s is a fixed
+   contract this project doesn't own); it reads naturally as prose under a
+   "Prevention" / "Why This Matters" / "Related" section, e.g.: *"Verified by
+   `caps`: capability `writes-to-lakebase`, proven 2026-07-07 — see
+   `checks/test_lakebase_write.py::test_write_readback`. Re-verify with
+   `python -m caps verify --capability writes-to-lakebase`."*
+
 **Manifest shape:**
 
 ```yaml

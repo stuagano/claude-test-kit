@@ -122,6 +122,19 @@
     "tier": "cheap",
     "waiver": null
   },
+  "evidence-prints-ledger-fields": {
+    "at": "2026-07-08T05:58:09.139322+00:00",
+    "detail": null,
+    "duration": 0.345,
+    "files": {
+      "caps/cli.py": "sha256:42ec016e6be7a5656122c1bb374df8b735b606f1be1bc5da4805886ab25b811f",
+      "tests/unit/test_caps_cli.py": "sha256:ed3a501e48ccc324add68e3377a8779c6f396e6c54f436841750ecfc6085a1d8"
+    },
+    "fingerprint": "sha256:cf21011541da5efd98a0db871ee9d93b44b49e713f3626f4623f10369ad80e52",
+    "result": "pass",
+    "tier": "cheap",
+    "waiver": null
+  },
   "expect-collects-all-failures": {
     "at": "2026-07-08T06:18:29.008577+00:00",
     "detail": null,

@@ -309,3 +309,14 @@ capabilities:
     deps:
     - caps/review.py
     check: tests/unit/test_caps_review.py::test_rubric_carries_the_tags_and_the_net_metric
+  - id: evidence-prints-ledger-fields
+    description: caps evidence prints the manifest+ledger fields for a capability, matching
+      the ledger record
+    given: a capability with a recorded ledger entry
+    when: caps evidence <id> runs
+    then: every printed field (state, tier, check, at, and state-specific detail/waiver/changed)
+      matches the ledger and manifest
+    tier: cheap
+    deps:
+    - caps/cli.py
+    check: tests/unit/test_caps_cli.py::test_evidence_prints_proven_capability
