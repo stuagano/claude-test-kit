@@ -7,6 +7,7 @@ PAST this doc, regardless of age? It shells out to the `claude` CLI, then keeps
 the verdict honest — an `overtaken` verdict is only trusted if the exact lines
 it quotes really appear in the named files (see ctk.docs_direction.verify_*).
 """
+
 from __future__ import annotations
 
 import json
@@ -14,8 +15,8 @@ import os
 import re
 import shutil
 import subprocess
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
-from typing import Callable, Optional, Sequence
 
 VALID_VERDICTS = ("current", "overtaken", "uncertain")
 
@@ -27,7 +28,7 @@ class ClaudeUnavailable(Exception):
 @dataclass
 class DirectionVerdict:
     doc: str
-    verdict: str                       # current | overtaken | uncertain
+    verdict: str  # current | overtaken | uncertain
     rationale: str
     doc_evidence: list[str] = field(default_factory=list)
     source_evidence: list[str] = field(default_factory=list)
@@ -41,7 +42,7 @@ def _authoritative_context(repo_root: str) -> str:
     for name in ("README.md", "SKILL.md", "CLAUDE.md", "capabilities.yaml"):
         p = os.path.join(repo_root, name)
         if os.path.exists(p):
-            with open(p, "r", errors="replace") as f:
+            with open(p, errors="replace") as f:
                 parts.append(f"### {name}\n{f.read()}")
     return "\n\n".join(parts)
 
@@ -68,12 +69,11 @@ def _claude_cli_runner(prompt: str) -> str:
     if not exe:
         raise ClaudeUnavailable("claude CLI not on PATH")
     try:
-        proc = subprocess.run(
-            [exe, "-p", prompt], capture_output=True, text=True, timeout=180)
-    except subprocess.TimeoutExpired:
+        proc = subprocess.run([exe, "-p", prompt], capture_output=True, text=True, timeout=180)
+    except subprocess.TimeoutExpired as e:
         # A hung/too-slow CLI is "unavailable to review in band" → fail-open (skip),
         # same as a missing CLI. Don't let it error the check and block the turn.
-        raise ClaudeUnavailable("claude CLI timed out after 180s")
+        raise ClaudeUnavailable("claude CLI timed out after 180s") from e
     if proc.returncode != 0:
         raise ClaudeUnavailable(f"claude exited {proc.returncode}: {proc.stderr[:200]}")
     return proc.stdout
@@ -92,9 +92,12 @@ def _verify_evidence(v: DirectionVerdict, doc_text: str, context: str) -> Direct
     if doc_ok and src_ok:
         return v
     return DirectionVerdict(
-        v.doc, "uncertain",
+        v.doc,
+        "uncertain",
         f"overtaken claim discarded — evidence not verifiable ({v.rationale})",
-        v.doc_evidence, v.source_evidence)
+        v.doc_evidence,
+        v.source_evidence,
+    )
 
 
 def _parse_verdict(doc: str, raw: str) -> DirectionVerdict:
@@ -121,13 +124,13 @@ def review_doc_direction(
     docs: Sequence[str],
     repo_root: str = ".",
     config=None,
-    runner: Optional[Callable[[str], str]] = None,
+    runner: Callable[[str], str] | None = None,
 ) -> list[DirectionVerdict]:
     runner = runner or _claude_cli_runner
     context = _authoritative_context(repo_root)
     verdicts: list[DirectionVerdict] = []
     for doc in docs:
-        with open(os.path.join(repo_root, doc), "r", errors="replace") as f:
+        with open(os.path.join(repo_root, doc), errors="replace") as f:
             doc_text = f.read()
         raw = runner(_build_prompt(doc, doc_text, context))
         verdict = _parse_verdict(doc, raw)

@@ -1,0 +1,74 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "claude-test-kit"
+version = "0.1.0"
+description = "ctk + caps — an anti-silent-failure pytest harness and capability-verification layer for Claude Code projects"
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.11"
+dependencies = ["PyYAML>=6.0"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Testing",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4",
+    "pytest-cov>=4.1",
+    "ruff>=0.12.0",
+    "mypy>=1.10.0",
+    "pre-commit>=3.5.0",
+    "types-PyYAML>=6.0.0",
+]
+
+[tool.setuptools]
+packages = ["ctk", "caps"]
+
+# --- Ruff: borrowed from awesome-claude-code's toolchain ---------------------
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+# examples/ holds intentional anti-patterns (swallowed exceptions, empty output)
+# that the kit's own tests assert against — never "fix" them.
+extend-exclude = ["examples"]
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "N",   # pep8-naming
+    "UP",  # pyupgrade
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "SIM", # flake8-simplify
+]
+ignore = [
+    "E203",  # whitespace before ':' (conflicts with the formatter)
+    "E402",  # module-level import not at top — tests do sys.path setup first
+    "N818",  # public exception names (RunFailure, ClaudeUnavailable) are API
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Test bodies intentionally exercise odd shapes (bare Exception asserts, etc.).
+"tests/**" = ["B017"]
+# review.py is a printed rubric (display text); wrapping its lines would alter output.
+"caps/review.py" = ["E501"]
+
+# --- mypy: type-check the library surface (ctk + caps) -----------------------
+[tool.mypy]
+python_version = "3.11"
+ignore_missing_imports = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+files = ["ctk", "caps"]
+exclude = "(^|/)(examples|tests|checks)/"

@@ -21,21 +21,30 @@ from __future__ import annotations
 import ast
 import os
 from dataclasses import dataclass
-from typing import Iterable
 
 
 @dataclass
 class SwallowedExcept:
     file: str
     line: int
-    kind: str          # "bare-pass" | "broad-pass" | "log-only"
+    kind: str  # "bare-pass" | "broad-pass" | "log-only"
     snippet: str
 
     def __str__(self) -> str:
         return f"{self.file}:{self.line}  [{self.kind}]  {self.snippet}"
 
 
-_LOGGING_CALLS = {"print", "debug", "info", "warning", "warn", "error", "exception", "critical", "log"}
+_LOGGING_CALLS = {
+    "print",
+    "debug",
+    "info",
+    "warning",
+    "warn",
+    "error",
+    "exception",
+    "critical",
+    "log",
+}
 
 
 def _body_is_only_pass(body: list[ast.stmt]) -> bool:
@@ -86,7 +95,10 @@ def _scan_source(source: str, filename: str) -> list[SwallowedExcept]:
         if not isinstance(node, ast.ExceptHandler):
             continue
         is_bare = node.type is None
-        is_broad = isinstance(node.type, ast.Name) and node.type.id in {"Exception", "BaseException"}
+        is_broad = isinstance(node.type, ast.Name) and node.type.id in {
+            "Exception",
+            "BaseException",
+        }
         snippet = lines[node.lineno - 1].strip() if 0 <= node.lineno - 1 < len(lines) else ""
 
         if _body_is_only_pass(node.body):
@@ -119,7 +131,7 @@ def find_swallowed_exceptions(path: str) -> list[SwallowedExcept]:
     results: list[SwallowedExcept] = []
     for fp in targets:
         try:
-            with open(fp, "r", errors="replace") as f:
+            with open(fp, errors="replace") as f:
                 src = f.read()
         except OSError:
             continue

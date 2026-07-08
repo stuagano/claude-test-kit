@@ -32,20 +32,23 @@ Quick start
     )
 """
 
-from .runners import run, RunResult
-from .contracts import expect, Expect, ContractError
-from .assertions import must, assert_nonempty, assert_file, assert_eq
+from .assertions import assert_eq, assert_file, assert_nonempty, must
+from .contracts import ContractError, Expect, expect
+from .docs import DocsConfig, Finding, find_stale_docs, format_findings
+from .docs_direction import (
+    ClaudeUnavailable,
+    DirectionVerdict,
+    format_verdicts,
+    review_doc_direction,
+)
+from .lint import SwallowedExcept, find_swallowed_exceptions
+from .runners import RunResult, run
 from .verify import (
     Artifact,
-    verify,
-    claim_vs_reality,
     Checklist,
     VerificationError,
-)
-from .lint import find_swallowed_exceptions, SwallowedExcept
-from .docs import find_stale_docs, Finding, DocsConfig, format_findings
-from .docs_direction import (
-    review_doc_direction, DirectionVerdict, ClaudeUnavailable, format_verdicts,
+    claim_vs_reality,
+    verify,
 )
 
 __all__ = [

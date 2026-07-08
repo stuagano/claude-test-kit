@@ -1,18 +1,25 @@
 import pytest
+
 from caps.manifest import load_manifest
-from caps.manifest_edit import add_capability, ManifestEditError
+from caps.manifest_edit import ManifestEditError, add_capability
 
 
 def _common():
-    return dict(description="writes rows and reads back", given="a db",
-                when="the job runs", then="rows read back", tier="cheap")
+    return {
+        "description": "writes rows and reads back",
+        "given": "a db",
+        "when": "the job runs",
+        "then": "rows read back",
+        "tier": "cheap",
+    }
 
 
 @pytest.mark.unit
 def test_creates_manifest_with_header_when_absent(tmp_path):
     m = tmp_path / "capabilities.yaml"
-    add_capability(m, id="cap1", deps=["ingest.py"],
-                   check="checks/test_cap1.py::test_cap1", **_common())
+    add_capability(
+        m, id="cap1", deps=["ingest.py"], check="checks/test_cap1.py::test_cap1", **_common()
+    )
     assert m.exists()
     caps = load_manifest(m)
     assert [c.id for c in caps] == ["cap1"]
@@ -34,8 +41,7 @@ def test_appends_and_preserves_comments_and_prior_entries(tmp_path):
         "    deps: []\n"
         "    check: checks/a.py::t\n"
     )
-    add_capability(m, id="cap2", deps=[],
-                   check="checks/test_cap2.py::test_cap2", **_common())
+    add_capability(m, id="cap2", deps=[], check="checks/test_cap2.py::test_cap2", **_common())
     text = m.read_text()
     assert "# my hand-written note" in text
     ids = [c.id for c in load_manifest(m)]
@@ -65,8 +71,7 @@ def test_non_block_style_rejected_and_file_unchanged(tmp_path):
 @pytest.mark.unit
 def test_scaffolds_failing_stub_when_check_file_absent(tmp_path):
     m = tmp_path / "capabilities.yaml"
-    add_capability(m, id="cap3", deps=[],
-                   check="checks/test_cap3.py::test_cap3", **_common())
+    add_capability(m, id="cap3", deps=[], check="checks/test_cap3.py::test_cap3", **_common())
     stub = tmp_path / "checks" / "test_cap3.py"
     assert stub.exists()
     body = stub.read_text()
@@ -80,8 +85,7 @@ def test_does_not_overwrite_existing_check_file(tmp_path):
     (tmp_path / "checks").mkdir()
     real = tmp_path / "checks" / "test_cap4.py"
     real.write_text("def test_cap4():\n    assert True  # real check\n")
-    add_capability(m, id="cap4", deps=[],
-                   check="checks/test_cap4.py::test_cap4", **_common())
+    add_capability(m, id="cap4", deps=[], check="checks/test_cap4.py::test_cap4", **_common())
     assert "real check" in real.read_text()
 
 
@@ -115,19 +119,30 @@ def test_requires_exactly_one_of_check_or_shell(tmp_path):
 import pytest as _pytest
 
 
-@_pytest.mark.parametrize("nasty", [
-    "has: a colon",
-    'has "double" and \'single\' quotes',
-    "leading - dash",
-    "@leading at",
-    "{braces} and [brackets]",
-    "trailing spaces   ",
-])
+@_pytest.mark.parametrize(
+    "nasty",
+    [
+        "has: a colon",
+        "has \"double\" and 'single' quotes",
+        "leading - dash",
+        "@leading at",
+        "{braces} and [brackets]",
+        "trailing spaces   ",
+    ],
+)
 def test_arbitrary_scalars_round_trip(tmp_path, nasty):
     m = tmp_path / "capabilities.yaml"
-    add_capability(m, id="sc", description=nasty, given=nasty, when=nasty,
-                   then=nasty, tier="cheap", deps=[nasty],
-                   check="checks/test_sc.py::test_sc")
+    add_capability(
+        m,
+        id="sc",
+        description=nasty,
+        given=nasty,
+        when=nasty,
+        then=nasty,
+        tier="cheap",
+        deps=[nasty],
+        check="checks/test_sc.py::test_sc",
+    )
     cap = load_manifest(m)[0]
     assert cap.description == nasty
     assert cap.given == nasty
@@ -138,8 +153,17 @@ def test_arbitrary_scalars_round_trip(tmp_path, nasty):
 
 def test_stub_default_test_name_when_no_node(tmp_path):
     m = tmp_path / "capabilities.yaml"
-    add_capability(m, id="nonode", deps=[], check="checks/test_nonode.py",
-                   description="d", given="g", when="w", then="t", tier="cheap")
+    add_capability(
+        m,
+        id="nonode",
+        deps=[],
+        check="checks/test_nonode.py",
+        description="d",
+        given="g",
+        when="w",
+        then="t",
+        tier="cheap",
+    )
     body = (tmp_path / "checks" / "test_nonode.py").read_text()
     assert "def test_capability" in body
     assert "NotImplementedError" in body

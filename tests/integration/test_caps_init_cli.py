@@ -3,6 +3,7 @@ import sys
 from pathlib import Path
 
 import pytest
+
 import ctk
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -52,9 +53,7 @@ def test_init_then_add_and_verify_self_contained(tmp_path):
     # A real check that imports the VENDORED ctk — its passing proves the project
     # is self-contained (vendored framework importable via the written pytest.ini).
     (tmp_path / "checks" / "test_demo.py").write_text(
-        "import ctk\n"
-        "def test_demo():\n"
-        "    assert hasattr(ctk, 'run')\n"
+        "import ctk\ndef test_demo():\n    assert hasattr(ctk, 'run')\n"
     )
 
     # From here, run with NO PYTHONPATH so ONLY the vendored framework is used —
@@ -64,11 +63,25 @@ def test_init_then_add_and_verify_self_contained(tmp_path):
         env.pop("PYTHONPATH", None)
         return ctk.run([sys.executable, "-m", "caps", *args], cwd=str(tmp_path), env=env)
 
-    add = _vendored([
-        "add", "--id", "demo", "--tier", "cheap",
-        "--description", "d", "--given", "g", "--when", "w", "--then", "t",
-        "--check", "checks/test_demo.py::test_demo",
-    ])
+    add = _vendored(
+        [
+            "add",
+            "--id",
+            "demo",
+            "--tier",
+            "cheap",
+            "--description",
+            "d",
+            "--given",
+            "g",
+            "--when",
+            "w",
+            "--then",
+            "t",
+            "--check",
+            "checks/test_demo.py::test_demo",
+        ]
+    )
     assert add.returncode == 0, add.stdout + add.stderr
 
     verify = _vendored(["verify", "--capability", "demo"])

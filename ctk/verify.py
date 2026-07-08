@@ -18,8 +18,8 @@ from __future__ import annotations
 
 import json
 import os
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
-from typing import Callable, Optional, Sequence
 
 
 class VerificationError(AssertionError):
@@ -37,11 +37,11 @@ class Artifact:
 
     path: str
     min_bytes: int = 1
-    must_contain: Optional[str] = None
-    must_not_contain: Optional[str] = None
+    must_contain: str | None = None
+    must_not_contain: str | None = None
     is_json: bool = False
     json_keys: Sequence[str] = field(default_factory=tuple)
-    newer_than: Optional[float] = None  # epoch seconds; catches stale/leftover files
+    newer_than: float | None = None  # epoch seconds; catches stale/leftover files
 
     def problems(self) -> list[str]:
         probs: list[str] = []
@@ -66,7 +66,7 @@ class Artifact:
 
         data = None
         if self.must_contain or self.must_not_contain or self.is_json:
-            with open(self.path, "r", errors="replace") as f:
+            with open(self.path, errors="replace") as f:
                 data = f.read()
 
         if self.must_contain and self.must_contain not in (data or ""):
@@ -128,7 +128,8 @@ def claim_vs_reality(
 
     if claimed_success and not reality_ok:
         raise VerificationError(
-            f"SILENT FAILURE on {claim_label!r}: it reported success, but verification failed:\n{reality_err}"
+            f"SILENT FAILURE on {claim_label!r}: it reported success, "
+            f"but verification failed:\n{reality_err}"
         )
     if not claimed_success and reality_ok:
         raise VerificationError(
@@ -159,7 +160,7 @@ class Checklist:
         self.name = name
         self._checks: list[_Check] = []
 
-    def add(self, name: str, fn: Callable[[], None]) -> "Checklist":
+    def add(self, name: str, fn: Callable[[], None]) -> Checklist:
         self._checks.append(_Check(name, fn))
         return self
 

@@ -1,9 +1,10 @@
 """UNIT tests for ctk.docs — the deterministic doc-staleness detectors."""
+
 import pytest
 
 pytestmark = pytest.mark.unit
 
-from ctk.docs import Finding, DocsConfig, find_stale_docs, format_findings
+from ctk.docs import DocsConfig, Finding, find_stale_docs
 
 
 def test_clean_doc_has_no_findings(workspace):
@@ -13,8 +14,14 @@ def test_clean_doc_has_no_findings(workspace):
 
 
 def test_finding_str_is_readable():
-    f = Finding(doc="a.md", line=3, kind="broken_ref", severity="error",
-                message="missing", evidence="x/y.py")
+    f = Finding(
+        doc="a.md",
+        line=3,
+        kind="broken_ref",
+        severity="error",
+        message="missing",
+        evidence="x/y.py",
+    )
     s = str(f)
     assert "a.md:3" in s and "broken_ref" in s and "x/y.py" in s
 
@@ -48,23 +55,20 @@ def test_dead_link_flags_missing_target(workspace):
 def test_dead_link_clean_for_existing_target(workspace):
     workspace.write("docs/guide.md", "# Guide\n")
     workspace.write("README.md", "See [guide](docs/guide.md).\n")
-    findings = find_stale_docs(
-        doc_roots=("README.md", "docs/"), repo_root=str(workspace.root))
+    findings = find_stale_docs(doc_roots=("README.md", "docs/"), repo_root=str(workspace.root))
     assert [f for f in findings if f.kind == "dead_link"] == []
 
 
 def test_dead_link_warns_on_missing_anchor(workspace):
     workspace.write("docs/guide.md", "# Guide\n\n## Setup\n")
     workspace.write("README.md", "See [setup](docs/guide.md#nonexistent).\n")
-    findings = find_stale_docs(
-        doc_roots=("README.md", "docs/"), repo_root=str(workspace.root))
+    findings = find_stale_docs(doc_roots=("README.md", "docs/"), repo_root=str(workspace.root))
     assert ("dead_link", "warn") in [(f.kind, f.severity) for f in findings]
 
 
 def test_dead_link_unreadable_target_is_a_finding(workspace, monkeypatch):
     workspace.write("docs/guide.md", "# Guide\n\n## Setup\n")
     workspace.write("README.md", "See [setup](docs/guide.md#setup).\n")
-    import ctk.docs as d
     real_open = open
 
     def boom(path, *a, **k):
@@ -73,18 +77,15 @@ def test_dead_link_unreadable_target_is_a_finding(workspace, monkeypatch):
         return real_open(path, *a, **k)
 
     monkeypatch.setattr("builtins.open", boom)
-    findings = find_stale_docs(
-        doc_roots=("README.md", "docs/"), repo_root=str(workspace.root))
-    assert any(f.kind == "dead_link" and "could not read" in f.message
-               for f in findings)
+    findings = find_stale_docs(doc_roots=("README.md", "docs/"), repo_root=str(workspace.root))
+    assert any(f.kind == "dead_link" and "could not read" in f.message for f in findings)
 
 
 def test_orphan_flags_unlinked_doc(workspace):
     workspace.write("README.md", "Start. [guide](docs/guide.md)\n")
     workspace.write("docs/guide.md", "# Guide\n")
     workspace.write("docs/lonely.md", "# Nobody links here\n")
-    findings = find_stale_docs(
-        doc_roots=("README.md", "docs/"), repo_root=str(workspace.root))
+    findings = find_stale_docs(doc_roots=("README.md", "docs/"), repo_root=str(workspace.root))
     orphans = [f.doc for f in findings if f.kind == "orphan"]
     assert "docs/lonely.md" in orphans
     assert "docs/guide.md" not in orphans
@@ -94,8 +95,7 @@ def test_orphan_flags_unlinked_doc(workspace):
 def test_orphan_exempts_archival_tree(workspace):
     workspace.write("README.md", "# Root\n")
     workspace.write("docs/superpowers/specs/old.md", "# archived\n")
-    findings = find_stale_docs(
-        doc_roots=("README.md", "docs/"), repo_root=str(workspace.root))
+    findings = find_stale_docs(doc_roots=("README.md", "docs/"), repo_root=str(workspace.root))
     assert [f for f in findings if f.kind == "orphan"] == []
 
 
@@ -129,10 +129,14 @@ def test_assertion_requires_paths_fails_when_missing(workspace):
 
 def test_assertion_requires_grep_pass_and_fail(workspace):
     workspace.write("caps/freshness.py", "WINDOW_HOURS = 24\n")
-    workspace.write("docs/ok.md",
-        "---\nctk:\n  requires_grep:\n    - {file: caps/freshness.py, pattern: '24'}\n---\n# ok\n")
-    workspace.write("docs/bad.md",
-        "---\nctk:\n  requires_grep:\n    - {file: caps/freshness.py, pattern: '99'}\n---\n# bad\n")
+    workspace.write(
+        "docs/ok.md",
+        "---\nctk:\n  requires_grep:\n    - {file: caps/freshness.py, pattern: '24'}\n---\n# ok\n",
+    )
+    workspace.write(
+        "docs/bad.md",
+        "---\nctk:\n  requires_grep:\n    - {file: caps/freshness.py, pattern: '99'}\n---\n# bad\n",
+    )
     findings = find_stale_docs(doc_roots=("docs/",), repo_root=str(workspace.root))
     bad = [f for f in findings if f.kind == "assertion_failed"]
     assert len(bad) == 1 and bad[0].doc == "docs/bad.md"
@@ -142,13 +146,13 @@ def test_malformed_front_matter_is_a_finding_not_a_crash(workspace):
     # ': : :' is invalid YAML inside the front-matter block
     workspace.write("docs/a.md", "---\n: : :\n---\n# A\n")
     findings = find_stale_docs(doc_roots=("docs/",), repo_root=str(workspace.root))
-    assert any(f.severity == "error" and "front matter" in f.message.lower()
-               for f in findings)
+    assert any(f.severity == "error" and "front matter" in f.message.lower() for f in findings)
 
 
 def test_unreadable_doc_is_a_finding(workspace, monkeypatch):
     workspace.write("docs/a.md", "# A\n")
     import ctk.docs as d
+
     real_open = open
 
     def boom(path, *a, **k):
@@ -163,11 +167,9 @@ def test_unreadable_doc_is_a_finding(workspace, monkeypatch):
 
 def test_non_dict_requires_grep_entry_is_a_finding_not_a_crash(workspace):
     # A bare string in requires_grep (not a dict) must not raise AttributeError
-    workspace.write("docs/a.md",
-        "---\nctk:\n  requires_grep:\n    - bare_string\n---\n# A\n")
+    workspace.write("docs/a.md", "---\nctk:\n  requires_grep:\n    - bare_string\n---\n# A\n")
     findings = find_stale_docs(doc_roots=("docs/",), repo_root=str(workspace.root))
-    assert any(f.kind == "assertion_failed" and "not a mapping" in f.message
-               for f in findings)
+    assert any(f.kind == "assertion_failed" and "not a mapping" in f.message for f in findings)
 
 
 def test_scan_exempt_suppresses_all_detectors_for_exempt_prefix(workspace):
@@ -176,8 +178,7 @@ def test_scan_exempt_suppresses_all_detectors_for_exempt_prefix(workspace):
     workspace.write("docs/superpowers/x.md", "See `ctk/nope.py` for details.\n")
     workspace.write("docs/live.md", "See `ctk/nope.py` for details.\n")
     config = DocsConfig(scan_exempt=("docs/superpowers/",))
-    findings = find_stale_docs(
-        doc_roots=("docs/",), repo_root=str(workspace.root), config=config)
+    findings = find_stale_docs(doc_roots=("docs/",), repo_root=str(workspace.root), config=config)
     exempt_findings = [f for f in findings if f.doc.startswith("docs/superpowers/")]
     live_findings = [f for f in findings if f.doc == "docs/live.md" and f.kind == "broken_ref"]
     assert exempt_findings == [], f"scan_exempt doc should have no findings, got: {exempt_findings}"

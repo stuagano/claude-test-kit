@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Union
 
 import yaml
 
@@ -26,12 +25,12 @@ class Capability:
     tier: str
     deps: list[str]
     freshness: str
-    check_kind: str          # "pytest" | "shell"
+    check_kind: str  # "pytest" | "shell"
     check_target: str
     warnings: list[str] = field(default_factory=list)
 
 
-def _parse_check(raw: Union[str, dict], cap_id: str) -> tuple[str, str]:
+def _parse_check(raw: str | dict, cap_id: str) -> tuple[str, str]:
     if isinstance(raw, str):
         return "pytest", raw
     if isinstance(raw, dict) and list(raw.keys()) == ["shell"]:
@@ -42,7 +41,7 @@ def _parse_check(raw: Union[str, dict], cap_id: str) -> tuple[str, str]:
     )
 
 
-def load_manifest(path: Union[str, Path]) -> list[Capability]:
+def load_manifest(path: str | Path) -> list[Capability]:
     path = Path(path)
     try:
         doc = yaml.safe_load(path.read_text()) or {}
@@ -84,9 +83,7 @@ def load_manifest(path: Union[str, Path]) -> list[Capability]:
         deps = raw.get("deps")
         if deps is None:
             deps = []
-            warnings.append(
-                "deps not declared; code-freshness covers only the check file"
-            )
+            warnings.append("deps not declared; code-freshness covers only the check file")
         elif not isinstance(deps, list):
             raise ManifestError(f"capability {cid!r}: deps must be a list of globs")
         deps = [str(d) for d in deps]

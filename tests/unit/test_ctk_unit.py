@@ -8,9 +8,14 @@ import pytest
 pytestmark = pytest.mark.unit
 
 from ctk import (
-    expect, ContractError,
-    Artifact, verify, claim_vs_reality, VerificationError,
-    find_swallowed_exceptions, assert_file,
+    Artifact,
+    ContractError,
+    VerificationError,
+    assert_file,
+    claim_vs_reality,
+    expect,
+    find_swallowed_exceptions,
+    verify,
 )
 from ctk.assertions import CheckError
 

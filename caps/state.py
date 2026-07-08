@@ -2,20 +2,19 @@ from __future__ import annotations
 
 from datetime import datetime
 from pathlib import Path
-from typing import Optional, Union
 
-from .manifest import Capability
-from .ledger import LedgerEntry
 from .fingerprint import fingerprint
-from .freshness import parse_duration, waiver_active, parse_iso
+from .freshness import parse_duration, parse_iso, waiver_active
+from .ledger import LedgerEntry
+from .manifest import Capability
 
 BLOCK_STATES = {"never-proven", "fail", "error", "code-stale"}
 
 
 def capability_state(
     capability: Capability,
-    entry: Optional[LedgerEntry],
-    root: Union[str, Path],
+    entry: LedgerEntry | None,
+    root: str | Path,
     now: datetime,
 ) -> str:
     """One word for where a capability stands. Distinguishes code-stale

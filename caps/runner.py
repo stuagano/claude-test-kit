@@ -3,9 +3,9 @@ from __future__ import annotations
 import re
 import sys
 from pathlib import Path
-from typing import Optional, Tuple, Union
 
 import ctk
+
 from .manifest import Capability
 
 # Reserved shell exit code meaning "could not run / resource unreachable".
@@ -22,7 +22,7 @@ CHECK_TIMEOUT = 900.0
 SNIPPET_MAX = 1500
 
 
-def _snippet(r: "ctk.RunResult") -> str:
+def _snippet(r: ctk.RunResult) -> str:
     """The most useful tail of a failed check's output. For pytest the failure
     summary lands near the end, so tailing (not heading) is what you want."""
     parts = [p.strip() for p in (r.stdout, r.stderr) if p and p.strip()]
@@ -32,9 +32,7 @@ def _snippet(r: "ctk.RunResult") -> str:
     return body
 
 
-def run_capability(
-    capability: Capability, root: Union[str, Path]
-) -> Tuple[str, Optional[str], float]:
+def run_capability(capability: Capability, root: str | Path) -> tuple[str, str | None, float]:
     """Execute the check and classify the outcome, returning (result, detail,
     duration).
 
@@ -49,7 +47,15 @@ def run_capability(
     root = str(root)
     if capability.check_kind == "pytest":
         r = ctk.run(
-            [sys.executable, "-m", "pytest", capability.check_target, "-q", "-p", "no:cacheprovider"],
+            [
+                sys.executable,
+                "-m",
+                "pytest",
+                capability.check_target,
+                "-q",
+                "-p",
+                "no:cacheprovider",
+            ],
             cwd=root,
             timeout=CHECK_TIMEOUT,
         )
