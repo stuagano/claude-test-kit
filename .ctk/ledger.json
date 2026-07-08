@@ -54,17 +54,17 @@
     "waiver": null
   },
   "docs-current": {
-    "at": "2026-06-22T21:30:11.107688+00:00",
+    "at": "2026-07-08T00:02:50.749109+00:00",
     "detail": null,
-    "duration": 0.146,
+    "duration": 0.205,
     "files": null,
-    "fingerprint": "sha256:2c79cbf808b0c2b1da5a6fcb8443b00537a16cacd7305b02180c5fd3fc78ef18",
+    "fingerprint": "sha256:c287fdbe0a3fd31ff3f4ad0db744e97c732009c53867f5c284afda9650777953",
     "result": "pass",
     "tier": "cheap",
     "waiver": null
   },
   "docs-direction-current": {
-    "at": "2026-06-22T20:49:32.540122+00:00",
+    "at": "2026-07-07T23:24:12.276594+00:00",
     "detail": null,
     "duration": null,
     "files": null,
@@ -72,8 +72,8 @@
     "result": "waived",
     "tier": "live",
     "waiver": {
-      "reason": "claude -p hangs/timeouts at 180s when run nested in this environment; live direction review cannot run here",
-      "until": "2026-06-23T20:49:32.540122+00:00"
+      "reason": "this session is itself a claude-CLI subprocess spawned by review_doc_direction() for this capability's own check; running caps verify here would recursively re-invoke it. Re-proven live from an outer session, consistent with prior ack in 78257e0.",
+      "until": "2026-07-08T23:24:12.276594+00:00"
     }
   },
   "doctor-flags-broken-setup": {
