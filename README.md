@@ -132,6 +132,7 @@ python -m caps verify                    # run checks, record proof; non-zero ex
 python -m caps verify --capability <id>  # just one
 python -m caps verify --stale            # re-prove only what the gate would block on (one command)
 python -m caps ack <id> --reason "..."   # time-boxed waiver when it genuinely can't be proven now
+python -m caps evidence <id>              # print a capability's contract + proof, for citing in docs (e.g. ce-compound)
 python -m caps add  ...                  # propose a new capability (see Discovery)
 python -m caps ponytail                  # print the "lazy senior dev" posture (see Posture)
 python -m caps install-ponytail          # inject that posture at session start (SessionStart hook)
