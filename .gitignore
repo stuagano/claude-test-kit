@@ -20,4 +20,5 @@ htmlcov/
 
 # Local-only Claude project notes (personal workflow/account details)
 CLAUDE.md
-.claude/
+.claude/*
+!.claude/settings.json
