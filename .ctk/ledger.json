@@ -66,27 +66,24 @@
     "waiver": null
   },
   "docs-current": {
-    "at": "2026-07-08T07:30:02.561704+00:00",
+    "at": "2026-08-07T14:15:49.737591+00:00",
     "detail": null,
-    "duration": 0.205,
+    "duration": 0.28,
     "files": null,
-    "fingerprint": "sha256:5ae8f6d73ad66fdd94bf72d9d3a437282a52fba4943d2a2750707a38ba3e41a9",
+    "fingerprint": "sha256:a088ddc7d8c2c684fe795a57185690af5a37933b8f3a7007fad4621d812bf35d",
     "result": "pass",
     "tier": "cheap",
     "waiver": null
   },
   "docs-direction-current": {
-    "at": "2026-07-07T23:24:12.276594+00:00",
+    "at": "2026-08-07T14:16:46.268412+00:00",
     "detail": null,
-    "duration": null,
+    "duration": 194.706,
     "files": null,
     "fingerprint": null,
-    "result": "waived",
+    "result": "pass",
     "tier": "live",
-    "waiver": {
-      "reason": "this session is itself a claude-CLI subprocess spawned by review_doc_direction() for this capability's own check; running caps verify here would recursively re-invoke it. Re-proven live from an outer session, consistent with prior ack in 78257e0.",
-      "until": "2026-07-08T23:24:12.276594+00:00"
-    }
+    "waiver": null
   },
   "doctor-flags-broken-setup": {
     "at": "2026-07-08T06:23:30.871601+00:00",
