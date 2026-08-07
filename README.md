@@ -18,6 +18,33 @@ It targets four failure modes:
 
 ---
 
+## Where this sits — loop engineering
+
+An agent loop only converges if the check it stops on is *trustworthy*. When it
+isn't, the agent optimizes the verifier instead of the task — it games the tests,
+reports success, and stops. That's the exact failure this kit exists to make
+impossible: the verifier is the real control surface, so this kit *is* a verifier
+you can trust to define and enforce "done."
+
+In [a16z's loop-engineering stack](https://a16z.com/knowing-when-to-stop-the-art-of-making-a-loop-converge/)
+(Feedback+Verification → Harness → Control+State → Execution Substrate), the kit
+is squarely **layer 1 — Feedback + Verification**, with a foot in the layers next
+to it and none in the substrate:
+
+| Loop-engineering layer | This kit |
+|---|---|
+| **1. Feedback + Verification** — the signal that closes the loop; defines "done" | **Home.** `ctk` proves real side effects; `capabilities.yaml` is the machine-readable "done"; the `Stop` gate enforces it in band. Unlike offline eval platforms, it proves *reality* and blocks the turn. |
+| **2. Harness + Agent Workspace** — where the loop is created and steered | **Plugs in.** Rides the harness (e.g. Claude Code) as a `Stop`-hook floor and a `SessionStart` posture ceiling — it steers the loop, it isn't the harness. |
+| **3. Control + State** — keeping a long run alive and stateful | **State only.** The committed ledger is durable proof-state across runs/machines/CI — but it's state, not a durable-execution/resume engine. |
+| **4. Execution Substrate** — where the loop runs against an environment | **Out of scope.** Checks run against whatever substrate you already have; the kit supplies none. |
+
+Two things it deliberately does **not** do: govern *what "done" costs* (there's no
+compute/budget stop — only a correctness stop, with duration-regression flags and
+the `review`/ponytail ceiling against over-building), and provide the **execution
+substrate** itself.
+
+---
+
 # Layer 1 — `ctk`, the anti-silent-failure primitives
 
 ## Setup
