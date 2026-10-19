@@ -114,7 +114,7 @@ capabilities:
     given:  a reachable Lakebase instance
     when:   the ingest job runs
     then:   the written rows are readable back with matching ids
-    tier:   live            # cheap (fingerprint freshness) | live (time-window, default 24h)
+    tier:   live            # cheap | handoff (fingerprint freshness) | live (time-window, default 24h)
     deps:   [ingest.py]     # changing these invalidates the proof
     check:  checks/test_lakebase_write.py::test_write_readback   # or { shell: "./prove.sh" }
 ```
