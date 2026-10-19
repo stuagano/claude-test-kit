@@ -13,7 +13,7 @@ from .gate import decide
 from .hookinstall import PONYTAIL_TAG, install_hook, uninstall_hook
 from .initializer import init_project, kit_root
 from .ledger import LedgerEntry, load_ledger, save_ledger
-from .manifest import ManifestError, load_manifest
+from .manifest import VALID_TIERS, ManifestError, load_manifest
 from .manifest_edit import ManifestEditError, add_capability
 from .ponytail import ponytail_instructions
 from .project import LEDGER_REL, MANIFEST_NAME, find_root
@@ -374,7 +374,7 @@ def cmd_init(target: str, force: bool, install_deps: bool) -> int:
         print(f"  {r.action:11} {r.detail}")
     print()
     print("Next steps:")
-    print("  1. Add a capability:  python -m caps add --id <id> --tier <cheap|live> ...")
+    print("  1. Add a capability:  python -m caps add --id <id> --tier <cheap|live|handoff> ...")
     print("  2. Prove it:          python -m caps verify")
     print("  3. (optional) enforce on every turn — the wrapper is vendored at")
     print("     bin/caps-stop-gate.sh, but the hook is NOT installed by init.")
@@ -463,7 +463,7 @@ def main(argv=None, cwd: str | None = None) -> int:
     ad.add_argument("--given", required=True)
     ad.add_argument("--when", required=True)
     ad.add_argument("--then", required=True)
-    ad.add_argument("--tier", required=True, choices=["cheap", "live"])
+    ad.add_argument("--tier", required=True, choices=list(VALID_TIERS))
     ad.add_argument("--deps", action="append", default=[], help="dep glob (repeat for multiple)")
     grp = ad.add_mutually_exclusive_group(required=True)
     grp.add_argument("--check", help="pytest node, e.g. checks/test_x.py::test_x")

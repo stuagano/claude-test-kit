@@ -154,6 +154,7 @@ Proof is recorded in `.ctk/ledger.json` (committed, so CI / another machine sees
 
 - **cheap → `freshness: code`** (fingerprint of the check + its `deps`). Touch a dep → stale → re-prove. Honest for local/deterministic checks. (Build artifacts like `__pycache__/*.pyc` are ignored.) `verify` also records a per-dep hash map, so a later code-stale reports **which** file drifted (`status` and the gate name it); broad globs (>25 files) skip the map to keep the ledger lean and just report `code-stale`.
 - **live → `freshness: 24h`** (time window). A live capability can break with *zero code change* (revoked perms, deleted instance), so its proof *expires* by the clock.
+- **handoff → `freshness: code`**. Static proof that a build is runnable and ownable by someone else (job timeouts, idle compute, no personal owner). It's deterministic like cheap, so it goes stale on code change.
 
 ## Enforcement — the `Stop` hook
 
@@ -194,7 +195,7 @@ The posture biases *authoring*; **`python -m caps review`** is the *audit* — t
 When capability-shaped work happens with no matching check, propose one and (on approval) wire it in with `caps add` — never hand-edit the manifest:
 
 ```bash
-python -m caps add --id <id> --tier <cheap|live> \
+python -m caps add --id <id> --tier <cheap|live|handoff> \
   --description "..." --given "..." --when "..." --then "..." \
   --deps <glob> [--deps <glob> ...] \
   --check checks/test_<id>.py::test_<id>      # or --shell "./prove.sh"
