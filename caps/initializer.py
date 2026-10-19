@@ -123,7 +123,7 @@ _STARTER_MANIFEST = """\
 # Capabilities THIS project promises — managed with `caps`.
 # Prove with:   python -m caps verify
 # Check state:  python -m caps status
-# Add one with: python -m caps add --id <id> --tier <cheap|live> \\
+# Add one with: python -m caps add --id <id> --tier <cheap|live|handoff> \\
 #                 --description "..." --given "..." --when "..." --then "..." \\
 #                 --deps <glob> --check checks/test_<id>.py::test_<id>
 #

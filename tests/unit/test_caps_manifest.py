@@ -59,6 +59,27 @@ def test_cheap_default_freshness_is_code(tmp_path):
 
 
 @pytest.mark.unit
+def test_handoff_tier_loads_with_code_freshness(tmp_path):
+    p = _write(
+        tmp_path,
+        """
+        capabilities:
+          - id: jobs-have-timeouts
+            description: every job declares timeout_seconds
+            given: a DABs bundle
+            when: the handoff linter parses it
+            then: no job is missing timeout_seconds
+            tier: handoff
+            deps: ["src/**"]
+            check: checks/test_handoff.py::test_it
+    """,
+    )
+    c = load_manifest(p)[0]
+    assert c.tier == "handoff"
+    assert c.freshness == "code"
+
+
+@pytest.mark.unit
 def test_shell_check(tmp_path):
     p = _write(
         tmp_path,

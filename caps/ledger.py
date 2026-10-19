@@ -12,7 +12,7 @@ from pathlib import Path
 class LedgerEntry:
     result: str  # "pass" | "fail" | "error" | "waived"
     at: str  # ISO-8601 timestamp
-    tier: str  # "cheap" | "live"
+    tier: str  # "cheap" | "live" | "handoff"
     fingerprint: str | None = None
     waiver: dict | None = None  # {"reason": str, "until": isostr}
     detail: str | None = None  # trimmed check output for a fail/error

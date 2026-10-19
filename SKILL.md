@@ -121,7 +121,7 @@ the DB" when we actually can't.
    wire it in with `caps add` — never hand-edit `capabilities.yaml`:
 
    ```
-   python -m caps add --id <id> --tier <cheap|live> \
+   python -m caps add --id <id> --tier <cheap|live|handoff> \
      --description "..." --given "..." --when "..." --then "..." \
      --deps <glob> [--deps <glob> ...] \
      --check checks/test_<id>.py::test_<id>      # or --shell "./prove.sh"
